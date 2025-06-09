@@ -1,12 +1,12 @@
-# 멀티 스테이지 빌드 - Builder Stage
-FROM eclipse-temurin:21-jdk AS builder
+# 멀티 스테이지 빌드 - Builder Stage (Maven 포함 이미지)
+FROM maven:3.9.4-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
 # pom.xml 복사 (의존성 캐싱 최적화)
 COPY pom.xml ./
 
-# 의존성 다운로드 (시스템 Maven 사용)
+# 의존성 다운로드
 RUN mvn dependency:go-offline -B
 
 # 소스 코드 복사
