@@ -37,19 +37,42 @@ cd /home/ubuntu
 DOMAIN="seurasaeng.site"
 EMAIL="admin@seurasaeng.site"
 
-# .env 파일 자동 생성 함수
+# .env 파일 자동 생성 함수 (보안 파일 참조)
 create_frontend_env() {
-    log_info ".env 파일을 확인합니다..."
+    log_info "프론트엔드 환경변수 파일을 확인합니다..."
+    
+    # 보안 설정 파일 로드
+    SECRETS_FILE="/etc/seurasaeng/frontend-secrets.env"
+    if [ -f "$SECRETS_FILE" ]; then
+        log_info "보안 설정 파일을 로드합니다..."
+        source "$SECRETS_FILE"
+        log_success "✅ 보안 설정 파일 로드 완료"
+    else
+        log_warning "⚠️ 보안 설정 파일이 없습니다: $SECRETS_FILE"
+        log_info "다음 명령어로 생성하세요:"
+        log_info "sudo mkdir -p /etc/seurasaeng"
+        log_info "sudo cat > /etc/seurasaeng/frontend-secrets.env << 'EOF'"
+        log_info "VITE_MOBILITY_API_KEY=your_mobility_api_key"
+        log_info "VITE_KAKAOMAP_API_KEY=your_kakaomap_api_key"
+        log_info "VITE_PERPLEXITY_API_KEY=your_perplexity_api_key"
+        log_info "EOF"
+        log_info "sudo chmod 600 /etc/seurasaeng/frontend-secrets.env"
+        
+        # 기본값 사용
+        VITE_MOBILITY_API_KEY="PLACEHOLDER_MOBILITY_API_KEY"
+        VITE_KAKAOMAP_API_KEY="PLACEHOLDER_KAKAOMAP_API_KEY"
+        VITE_PERPLEXITY_API_KEY="PLACEHOLDER_PERPLEXITY_API_KEY"
+    fi
     
     if [ ! -f "seurasaeng_fe/.env" ]; then
         log_warning ".env 파일이 없습니다. 자동으로 생성합니다..."
         
-        cat > seurasaeng_fe/.env << 'EOF'
+        cat > seurasaeng_fe/.env << EOF
 VITE_SOCKET_URL=wss://seurasaeng.site/ws
 VITE_API_BASE_URL=https://seurasaeng.site/api
-VITE_MOBILITY_API_KEY=2868494a3053c4014954615d4dcfafc1
-VITE_KAKAOMAP_API_KEY=d079914b9511e06b410311be64216366
-VITE_PERPLEXITY_API_KEY=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
+VITE_MOBILITY_API_KEY=${VITE_MOBILITY_API_KEY}
+VITE_KAKAOMAP_API_KEY=${VITE_KAKAOMAP_API_KEY}
+VITE_PERPLEXITY_API_KEY=${VITE_PERPLEXITY_API_KEY}
 VITE_MOBILITY_API_BASE_URL=https://apis-navi.kakaomobility.com/v1/directions
 VITE_KAKAOMAP_API_BASE_URL=//dapi.kakao.com/v2/maps/sdk.js
 EOF
@@ -62,14 +85,23 @@ EOF
         log_success "✅ .env 파일이 이미 존재합니다"
     fi
     
+    # PLACEHOLDER 확인
+    if grep -q "PLACEHOLDER" seurasaeng_fe/.env; then
+        log_warning "⚠️ 일부 API 키가 PLACEHOLDER 값입니다. 보안 설정 파일을 확인해주세요."
+    fi
+    
     # 환경변수 요약 출력 (값은 마스킹)
-    log_info "=== 📋 환경변수 설정 요약 ==="
+    log_info "=== 📋 프론트엔드 환경변수 설정 요약 ==="
     while IFS='=' read -r key value; do
         if [[ $key =~ ^VITE_ ]] && [[ ! $key =~ ^# ]]; then
             if [[ $key =~ KEY$ ]]; then
                 # API 키는 마스킹
-                masked_value="${value:0:8}***${value: -4}"
-                log_info "  $key: $masked_value"
+                if [[ $value == PLACEHOLDER* ]]; then
+                    log_warning "  $key: $value (⚠️ PLACEHOLDER)"
+                else
+                    masked_value="${value:0:8}***${value: -4}"
+                    log_info "  $key: $masked_value"
+                fi
             else
                 log_info "  $key: $value"
             fi
@@ -375,10 +407,7 @@ log_info "=== 📊 관리 명령어 ==="
 log_info "📊 서비스 상태 확인: cd seurasaeng_fe && docker-compose ps"
 log_info "📋 로그 확인: cd seurasaeng_fe && docker-compose logs -f"
 log_info "📋 Nginx 로그: docker logs seuraseung-frontend"
-log_info "🔧 Nginx 설정 확인: docker exec seuraseung-frontend cat /etc/nginx/conf.d/default.conf"
-log_info "🔒 SSL 인증서 확인: docker run --rm -v certbot_conf:/etc/letsencrypt certbot/certbot:latest certificates"
-log_info "🔄 SSL 수동 갱신: /home/ubuntu/renew-ssl.sh"
-log_info "🔍 환경변수 확인: docker exec seuraseung-frontend env | grep VITE_"
+log_info "🔧 환경변수 확인: docker exec seuraseung-frontend env | grep VITE_"
 
 # 배포 정보 기록
 {
@@ -408,4 +437,4 @@ if [ -f "seurasaeng_fe/docker-compose.yml" ]; then
     cp seurasaeng_fe/docker-compose.yml seurasaeng_fe/docker-compose.yml.success
 fi
 
-log_success "🔒 HTTPS 지원 프론트엔드가 완전히 준비되었습니다. 환경변수가 자동 생성되어 CI/CD에서도 안전합니다!"
+log_success "🔒 HTTPS 지원 프론트엔드가 완전히 준비되었습니다. 보안 설정 파일을 통한 안전한 배포가 완료되었습니다!"
