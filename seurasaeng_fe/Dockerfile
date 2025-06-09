@@ -37,12 +37,7 @@ RUN apk add --no-cache \
     && echo "Asia/Seoul" > /etc/timezone \
     && apk del tzdata
 
-# 사용자 및 그룹 설정
-RUN addgroup -g 101 -S nginx-ssl \
-    && adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx-ssl -g nginx nginx-ssl \
-    && adduser nginx nginx-ssl
-
-# 디렉토리 생성 및 권한 설정
+# 디렉토리 생성 및 기본 권한 설정
 RUN mkdir -p \
     /etc/ssl/certs \
     /etc/ssl/private \
@@ -50,10 +45,6 @@ RUN mkdir -p \
     /var/log/nginx \
     /var/log/letsencrypt \
     /scripts \
-    && chown -R nginx:nginx \
-        /var/www/certbot \
-        /var/log/nginx \
-        /etc/ssl \
     && chmod -R 755 /var/www/certbot \
     && chmod 755 /etc/ssl/certs \
     && chmod 700 /etc/ssl/private
@@ -71,9 +62,8 @@ COPY scripts/ /scripts/
 # 스크립트 실행 권한 부여
 RUN chmod +x /scripts/*.sh
 
-# 앱 권한 설정
-RUN chown -R nginx:nginx /usr/share/nginx/html \
-    && chmod -R 755 /usr/share/nginx/html
+# 앱 권한은 런타임에 설정 (빌드 시 권한 문제 방지)
+RUN chmod -R 755 /usr/share/nginx/html
 
 # 포트 노출
 EXPOSE 80 443
