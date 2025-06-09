@@ -263,7 +263,7 @@ jobs:
         script: |
           echo "🔄 Checking SSL certificate renewal..."
           if [ -f "/home/ubuntu/renew-ssl.sh" ]; then
-            /home/ubuntu/renew-ssl.sh
+            bash /home/ubuntu/renew-ssl.sh
             echo "✅ SSL renewal check completed"
           else
             echo "⚠️ SSL renewal script not found"

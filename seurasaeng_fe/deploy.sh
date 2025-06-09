@@ -56,15 +56,22 @@ setup_ssl_certificates() {
     
     log_info "새로운 SSL 인증서를 발급받습니다..."
     
-    # 임시 Nginx 컨테이너로 80 포트 확보
+    # 기존 컨테이너가 있으면 중지
     if docker ps | grep -q seuraseung-frontend; then
         log_info "기존 컨테이너를 임시 중지합니다..."
         cd seurasaeng_fe
-        docker-compose down
+        docker-compose down 2>/dev/null || true
         cd /home/ubuntu
     fi
     
-    # Let's Encrypt 인증서 발급
+    # 80 포트가 사용 중인지 확인하고 대기
+    while netstat -tulpn | grep -q ":80 "; do
+        log_info "80 포트가 사용 중입니다. 잠시 대기..."
+        sleep 5
+    done
+    
+    # Let's Encrypt 인증서 발급 시도
+    log_info "Let's Encrypt 인증서 발급을 시도합니다..."
     if docker run --rm \
         -v certbot_conf:/etc/letsencrypt \
         -v certbot_www:/var/www/certbot \
@@ -74,11 +81,18 @@ setup_ssl_certificates() {
         --email "$EMAIL" \
         --agree-tos \
         --no-eff-email \
+        --non-interactive \
         --domains "$DOMAIN" \
-        --domains "www.$DOMAIN"; then
-        log_success "✅ SSL 인증서 발급 완료"
+        --domains "www.$DOMAIN" 2>/dev/null; then
+        log_success "✅ Let's Encrypt SSL 인증서 발급 완료"
     else
-        log_warning "⚠️ SSL 인증서 발급 실패. 자체 서명 인증서를 사용합니다."
+        log_warning "⚠️ Let's Encrypt 인증서 발급 실패. 자체 서명 인증서를 생성합니다..."
+        
+        # 인증서 디렉토리 생성
+        docker run --rm \
+            -v certbot_conf:/etc/letsencrypt \
+            alpine \
+            mkdir -p /etc/letsencrypt/live/$DOMAIN
         
         # 자체 서명 인증서 생성
         docker run --rm \
@@ -89,11 +103,13 @@ setup_ssl_certificates() {
             -out /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
             -subj "/C=KR/ST=Seoul/L=Seoul/O=Seurasaeng/CN=$DOMAIN"
         
-        # chain.pem 파일 생성
+        # chain.pem 파일 생성 (nginx에서 필요)
         docker run --rm \
             -v certbot_conf:/etc/letsencrypt \
             alpine \
-            cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem /etc/letsencrypt/live/$DOMAIN/chain.pem
+            sh -c "cp /etc/letsencrypt/live/$DOMAIN/fullchain.pem /etc/letsencrypt/live/$DOMAIN/chain.pem"
+        
+        log_success "✅ 자체 서명 인증서 생성 완료"
     fi
 }
 
@@ -104,11 +120,39 @@ setup_ssl_renewal() {
     # 갱신 스크립트 생성
     cat > /home/ubuntu/renew-ssl.sh << 'EOF'
 #!/bin/bash
-cd /home/ubuntu/seurasaeng_fe
-docker-compose run --rm certbot renew --quiet
-if [ $? -eq 0 ]; then
-    docker-compose exec frontend nginx -s reload
+log_info() {
+    echo "[$(date)] [INFO] $1"
+}
+
+log_success() {
+    echo "[$(date)] [SUCCESS] $1"
+}
+
+log_error() {
+    echo "[$(date)] [ERROR] $1"
+}
+
+log_info "SSL 인증서 갱신을 시작합니다..."
+
+# 인증서 갱신 시도
+if docker run --rm \
+    -v certbot_conf:/etc/letsencrypt \
+    -v certbot_www:/var/www/certbot \
+    certbot/certbot:latest \
+    renew --quiet; then
+    
+    log_success "SSL 인증서 갱신 성공"
+    
+    # Nginx 재로드
+    if docker ps | grep -q seuraseung-frontend; then
+        docker exec seuraseung-frontend nginx -s reload
+        log_info "Nginx 설정 재로드 완료"
+    fi
+    
     echo "$(date): SSL certificate renewed successfully" >> /home/ubuntu/ssl-renewal.log
+else
+    log_error "SSL 인증서 갱신 실패"
+    echo "$(date): SSL certificate renewal failed" >> /home/ubuntu/ssl-renewal.log
 fi
 EOF
     chmod +x /home/ubuntu/renew-ssl.sh
