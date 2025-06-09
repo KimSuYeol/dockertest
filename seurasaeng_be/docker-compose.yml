@@ -37,9 +37,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    labels:
-      - "com.docker.compose.service=postgres"
-      - "com.seuraseung.service=database"
 
   # Redis 캐시
   redis:
@@ -47,8 +44,6 @@ services:
     container_name: seuraseung-redis
     restart: unless-stopped
     command: redis-server /etc/redis/redis.conf --requirepass redis123!
-    environment:
-      REDIS_PASSWORD: redis123!
     volumes:
       - redis_data:/data
       - /home/ubuntu/database/redis/redis.conf:/etc/redis/redis.conf:ro
@@ -63,55 +58,32 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    labels:
-      - "com.docker.compose.service=redis"
-      - "com.seuraseung.service=cache"
 
-  # Spring Boot 백엔드
+  # Spring Boot 백엔드 (단순화)
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        SPRING_PROFILES_ACTIVE: prod
     image: seuraseung-backend:latest
     container_name: seuraseung-backend
     restart: unless-stopped
     environment:
-      # Spring 프로파일
-      SPRING_PROFILES_ACTIVE: prod
-      
-      # 데이터베이스 설정
-      DB_URL: jdbc:postgresql://postgres:5432/seuraseung?currentSchema=seurasaeng-prod
+      # 기존 application.properties에서 환경변수로 참조하는 것들만 설정
+      DB_URL: jdbc:postgresql://postgres:5432/seuraseung
       DB_USERNAME: seuraseung
       DB_PASSWORD: seuraseung123!
-      
-      # Redis 설정
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_DB: 0
-      
-      # JWT 설정
-      JWT_KEY: seuraseung-jwt-secret-key-2024-prod-version-very-long-secret
-      
-      # 암호화 키
-      ENCRYPTION_KEY: seuraseung-encryption-key-2024
-      
-      # CORS 설정
       CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221
-      
-      # AWS S3 설정 (실제 운영시 Secrets로 관리)
-      AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-dummy}
-      AWS_SECRET_KEY: ${AWS_SECRET_KEY:-dummy}
-      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
-      AWS_BUCKET: ${AWS_BUCKET:-seuraseung-bucket}
-      
-      # 메일 설정
-      MAIL_USERNAME: ${MAIL_USERNAME:-dummy@gmail.com}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-dummy}
-      
-      # JVM 설정
-      JAVA_OPTS: "-Xmx512m -Xms256m -XX:+UseG1GC"
+      # 나머지는 더미값 또는 기본값 사용
+      AWS_ACCESS_KEY: dummy
+      AWS_SECRET_KEY: dummy
+      AWS_REGION: ap-northeast-2
+      AWS_BUCKET: dummy-bucket
+      MAIL_USERNAME: dummy@gmail.com
+      MAIL_PASSWORD: dummy
+      ENCRYPTION_KEY: seuraseung-key-2024
+      JWT_KEY: seuraseung-jwt-secret-key-2024
     volumes:
       - backend_logs:/app/logs
       - /home/ubuntu/logs/spring:/app/logs
@@ -130,12 +102,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 90s
-    labels:
-      - "com.docker.compose.service=backend"
-      - "com.seuraseung.service=api"
-      - "com.seuraseung.version=1.0.0"
 
-  # 데이터베이스 초기화 서비스 (한 번만 실행)
+  # 데이터베이스 초기화 (한 번만 실행)
   db-setup:
     image: postgres:15.12
     container_name: seuraseung-db-setup
@@ -161,6 +129,3 @@ services:
         echo 'Database setup completed'
       "
     restart: "no"
-    labels:
-      - "com.docker.compose.service=db-setup"
-      - "com.seuraseung.service=initialization"

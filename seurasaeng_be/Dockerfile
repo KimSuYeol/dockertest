@@ -10,7 +10,7 @@ COPY .mvn .mvn
 # pom.xml 복사 (의존성 캐싱 최적화)
 COPY pom.xml ./
 
-# 의존성 다운로드 (변경이 없으면 캐시 사용)
+# 의존성 다운로드
 RUN chmod +x mvnw || true
 RUN ./mvnw dependency:go-offline -B || mvn dependency:go-offline -B
 
@@ -18,15 +18,12 @@ RUN ./mvnw dependency:go-offline -B || mvn dependency:go-offline -B
 COPY src ./src
 
 # Spring Boot 애플리케이션 빌드
-ARG SPRING_PROFILES_ACTIVE=prod
-ENV SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE
-
 RUN ./mvnw clean package -DskipTests -B || mvn clean package -DskipTests -B
 
 # 빌드 결과 확인
 RUN ls -la target/
 
-# Production Stage - OpenJDK 21 JRE (슬림 아님, 풀 버전 사용)
+# Production Stage - OpenJDK 21 JRE (풀 버전 사용)
 FROM openjdk:21-jre
 
 # 한국 시간대 설정
@@ -54,10 +51,7 @@ RUN mkdir -p /app/logs && \
 USER spring
 
 # JVM 최적화 환경변수
-ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC -XX:G1HeapRegionSize=16m -XX:+UseStringDeduplication"
-
-# Spring Boot 프로파일 설정
-ENV SPRING_PROFILES_ACTIVE=prod
+ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseG1GC"
 
 # 포트 노출
 EXPOSE 8080
@@ -66,5 +60,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-# 애플리케이션 시작
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+# 애플리케이션 시작 (간단하게)
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
