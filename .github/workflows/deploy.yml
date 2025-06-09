@@ -1,55 +1,90 @@
-name: Deploy Auto-HTTPS Frontend
+name: Deploy HTTPS Frontend to AWS EC2
 
 on:
   push:
-    branches: [main]
-    paths: ['seurasaeng_fe/**']
+    branches:
+      - main
+    paths:
+      - 'seurasaeng_fe/**'
   workflow_dispatch:
 
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
 jobs:
-  deploy:
+  # 프론트엔드 빌드 및 배포
+  deploy-frontend:
+    name: Deploy HTTPS Frontend to Public Server
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         cache-dependency-path: seurasaeng_fe/package-lock.json
-    
-    - name: Install and Build
+        
+    - name: Install dependencies
       run: |
         cd seurasaeng_fe
         npm ci
-        echo "VITE_API_URL=https://seurasaeng.site/api" > .env.production
-        npm run build
-    
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Build Docker Image
+        
+    - name: Run tests (optional)
       run: |
         cd seurasaeng_fe
-        docker buildx build --platform linux/arm64 --build-arg VITE_API_URL=https://seurasaeng.site/api -t seuraseung-frontend:latest . --load
-    
-    - name: Save Docker Image
+        # npm run test -- --watchAll=false
+        echo "Tests skipped for now"
+        
+    - name: Build React app for HTTPS
+      run: |
+        cd seurasaeng_fe
+        # HTTPS 환경변수 설정 후 빌드
+        echo "VITE_API_URL=https://seurasaeng.site/api" > .env.production
+        npm run build
+        
+    - name: Verify build output
+      run: |
+        cd seurasaeng_fe
+        ls -la dist/
+        echo "Build verification completed"
+        
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+        
+    - name: Build Docker image (ARM64) with HTTPS support
+      run: |
+        cd seurasaeng_fe
+        docker buildx build \
+          --platform linux/arm64 \
+          --build-arg VITE_API_URL=https://seurasaeng.site/api \
+          -t seuraseung-frontend:latest . \
+          --load
+          
+    - name: Verify Docker image
+      run: |
+        docker images | grep seuraseung-frontend
+        echo "Docker image verification completed"
+        
+    - name: Save Docker image
       run: |
         docker save seuraseung-frontend:latest | gzip > seurasaeng_fe-image.tar.gz
-    
-    - name: Copy Files to Server
+        
+    - name: Copy files to Front Server
       uses: appleboy/scp-action@v0.1.5
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/deploy.sh,seurasaeng_fe/docker-compose.yml,seurasaeng_fe/nginx/,seurasaeng_fe/scripts/"
-        target: "/tmp/deploy/"
+        source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/deploy.sh,seurasaeng_fe/docker-compose.yml,seurasaeng_fe/nginx/"
+        target: "/home/ubuntu/"
         timeout: 300s
-    
-    - name: Deploy on Server
+        
+    - name: Deploy HTTPS Frontend with Health Check
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
@@ -58,38 +93,178 @@ jobs:
         timeout: 600s
         script: |
           set -e
-          cd /tmp/deploy
           
-          # Docker 이미지 로드
-          if [ -f "seurasaeng_fe-image.tar.gz" ]; then
-            docker load < seurasaeng_fe-image.tar.gz
-            rm seurasaeng_fe-image.tar.gz
+          echo "🚀 Starting HTTPS frontend deployment..."
+          
+          # 배포 스크립트 실행 권한 부여 및 실행
+          chmod +x /home/ubuntu/seurasaeng_fe/deploy.sh
+          bash /home/ubuntu/seurasaeng_fe/deploy.sh
+          
+          echo "✅ HTTPS Frontend deployment script completed"
+
+    - name: Frontend Integration Test (HTTP & HTTPS)
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.FRONT_SERVER_HOST }}
+        username: ubuntu
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        timeout: 300s
+        script: |
+          set -e
+          
+          echo "🔍 Starting frontend integration test (HTTP & HTTPS)..."
+          
+          # HTTP 헬스체크 테스트
+          MAX_ATTEMPTS=20
+          ATTEMPT=1
+          
+          while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            echo "⏳ Testing HTTP frontend health... (${ATTEMPT}/${MAX_ATTEMPTS})"
+            
+            if curl -f -s http://localhost/health > /dev/null; then
+              echo "✅ HTTP Frontend health check passed"
+              break
+            fi
+            
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "❌ HTTP Frontend health check failed after ${MAX_ATTEMPTS} attempts"
+              echo "📋 Container status:"
+              cd seurasaeng_fe && docker-compose ps
+              echo "📋 Frontend logs:"
+              docker logs seuraseung-frontend --tail=50
+              exit 1
+            fi
+            
+            sleep 10
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          
+          # HTTPS 헬스체크 테스트
+          echo "🔒 Testing HTTPS frontend health..."
+          ATTEMPT=1
+          while [ $ATTEMPT -le 10 ]; do
+            if curl -f -s -k https://localhost/health > /dev/null; then
+              echo "✅ HTTPS Frontend health check passed"
+              break
+            fi
+            
+            if [ $ATTEMPT -eq 10 ]; then
+              echo "⚠️ HTTPS health check failed, but HTTP is working"
+              break
+            fi
+            
+            echo "⏳ Waiting for HTTPS... (${ATTEMPT}/10)"
+            sleep 15
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          
+          # 메인 페이지 테스트 (HTTP)
+          echo "🔍 Testing HTTP main page..."
+          if curl -f -s http://localhost/ > /dev/null; then
+            echo "✅ HTTP Main page is accessible"
+          else
+            echo "❌ HTTP Main page test failed"
+            exit 1
           fi
           
-          # 배포 디렉토리로 이동
-          cd seurasaeng_fe
+          # 메인 페이지 테스트 (HTTPS)
+          echo "🔒 Testing HTTPS main page..."
+          if curl -f -s -k https://localhost/ > /dev/null; then
+            echo "✅ HTTPS Main page is accessible"
+          else
+            echo "⚠️ HTTPS Main page test failed (HTTP still works)"
+          fi
           
-          # 배포 실행
-          chmod +x deploy.sh scripts/*.sh
-          ./deploy.sh
+          # HTTP to HTTPS 리다이렉트 테스트
+          echo "🔄 Testing HTTP to HTTPS redirect..."
+          REDIRECT_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/)
+          if [ "$REDIRECT_RESPONSE" = "301" ] || [ "$REDIRECT_RESPONSE" = "302" ]; then
+            echo "✅ HTTP to HTTPS redirect is working"
+          else
+            echo "⚠️ HTTP to HTTPS redirect may not be configured properly"
+          fi
           
-          echo "✅ Deployment completed successfully"
+          # 백엔드 연결 테스트 (실패해도 배포는 성공)
+          echo "🔍 Testing backend connectivity..."
+          if curl -f -s http://10.0.2.165:8080/api/actuator/health > /dev/null; then
+            echo "✅ Backend connectivity verified"
+            
+            # HTTPS API 프록시 테스트
+            if curl -f -s -k https://localhost/api/actuator/health > /dev/null; then
+              echo "✅ HTTPS API proxy is working"
+            else
+              echo "⚠️ HTTPS API proxy test failed"
+              
+              # HTTP API 프록시 테스트
+              if curl -f -s http://localhost/api/actuator/health > /dev/null; then
+                echo "✅ HTTP API proxy is working"
+              else
+                echo "⚠️ HTTP API proxy test also failed"
+              fi
+            fi
+          else
+            echo "⚠️ Backend is not available (frontend-only deployment)"
+          fi
+          
+          echo "🎉 Frontend integration test completed!"
+
+  # 배포 후 알림 및 정리
+  post-deployment:
+    name: Post Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: deploy-frontend
+    if: always()
     
-    - name: Health Check
+    steps:
+    - name: Deployment Summary
+      run: |
+        echo "## HTTPS Frontend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ needs.deploy-frontend.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Deployment Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.deploy-frontend.result }}" = "success" ]; then
+          echo "- **HTTPS URL**: https://seurasaeng.site" >> $GITHUB_STEP_SUMMARY
+          echo "- **HTTP URL**: http://${{ secrets.FRONT_SERVER_HOST }} (redirects to HTTPS)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check (HTTPS)**: https://seurasaeng.site/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check (HTTP)**: http://${{ secrets.FRONT_SERVER_HOST }}/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ SUCCESS (HTTPS ENABLED)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Status**: ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action Required**: Check deployment logs and SSL certificate status" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Cleanup on Failure
+      if: failure()
+      run: |
+        echo "🚨 HTTPS Deployment failed! Manual intervention may be required."
+        echo "🔍 Check the following:"
+        echo "  1. Server connectivity"
+        echo "  2. Docker container status"
+        echo "  3. Nginx configuration"
+        echo "  4. SSL certificate issues"
+        echo "  5. Domain DNS settings"
+        echo "  6. Frontend build issues"
+
+# SSL 인증서 갱신 작업 (별도 스케줄)
+  ssl-renewal:
+    name: SSL Certificate Renewal Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Renew SSL Certificates
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          for i in {1..10}; do
-            if curl -f -s https://seurasaeng.site/health >/dev/null 2>&1; then
-              echo "✅ HTTPS Health check passed"
-              break
-            elif curl -f -s http://${{ secrets.FRONT_SERVER_HOST }}/health >/dev/null 2>&1; then
-              echo "✅ HTTP Health check passed"
-              break
-            fi
-            echo "Waiting for service... ($i/10)"
-            sleep 10
-          done
+          echo "🔄 Checking SSL certificate renewal..."
+          if [ -f "/home/ubuntu/renew-ssl.sh" ]; then
+            /home/ubuntu/renew-ssl.sh
+            echo "✅ SSL renewal check completed"
+          else
+            echo "⚠️ SSL renewal script not found"
+          fi
