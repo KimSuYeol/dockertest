@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 ARG VITE_API_URL=https://seurasaeng.site/api
 ENV VITE_API_URL=$VITE_API_URL
-RUN npm run build
+RUN npm run build && ls -la dist/
 
 # Production Stage
 FROM nginx:1.25-alpine
@@ -32,17 +32,31 @@ RUN apk add --no-cache \
     tzdata \
     bash \
     certbot \
+    sudo \
     && cp /usr/share/zoneinfo/Asia/Seoul /etc/localtime \
     && echo "Asia/Seoul" > /etc/timezone \
     && apk del tzdata
 
-# 디렉토리 생성
+# 사용자 및 그룹 설정
+RUN addgroup -g 101 -S nginx-ssl \
+    && adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx-ssl -g nginx nginx-ssl \
+    && adduser nginx nginx-ssl
+
+# 디렉토리 생성 및 권한 설정
 RUN mkdir -p \
     /etc/ssl/certs \
     /etc/ssl/private \
-    /var/www/certbot \
+    /var/www/certbot/.well-known/acme-challenge \
     /var/log/nginx \
-    /scripts
+    /var/log/letsencrypt \
+    /scripts \
+    && chown -R nginx:nginx \
+        /var/www/certbot \
+        /var/log/nginx \
+        /etc/ssl \
+    && chmod -R 755 /var/www/certbot \
+    && chmod 755 /etc/ssl/certs \
+    && chmod 700 /etc/ssl/private
 
 # Nginx 설정 복사
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
@@ -57,15 +71,15 @@ COPY scripts/ /scripts/
 # 스크립트 실행 권한 부여
 RUN chmod +x /scripts/*.sh
 
-# 권한 설정
-RUN chown -R nginx:nginx /usr/share/nginx/html /var/log/nginx /var/www/certbot \
-    && chmod -R 755 /usr/share/nginx/html /var/www/certbot
+# 앱 권한 설정
+RUN chown -R nginx:nginx /usr/share/nginx/html \
+    && chmod -R 755 /usr/share/nginx/html
 
 # 포트 노출
 EXPOSE 80 443
 
 # 헬스체크
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f https://localhost/health -k || curl -f http://localhost/health || exit 1
 
 # 시작 명령

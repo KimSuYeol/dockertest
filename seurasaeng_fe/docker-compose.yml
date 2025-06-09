@@ -9,6 +9,8 @@ volumes:
     driver: local
   certbot_www:
     driver: local
+  letsencrypt_data:
+    driver: local
 
 services:
   frontend:
@@ -29,9 +31,10 @@ services:
       - frontend-network
     volumes:
       - nginx_logs:/var/log/nginx
-      - /home/ubuntu/logs/nginx:/var/log/nginx
+      - /home/ubuntu/logs/nginx:/host/logs/nginx
       - ssl_certs:/etc/ssl
       - certbot_www:/var/www/certbot
+      - letsencrypt_data:/etc/letsencrypt
     environment:
       - NGINX_WORKER_PROCESSES=auto
       - NGINX_WORKER_CONNECTIONS=1024
@@ -41,29 +44,11 @@ services:
     healthcheck:
       test: ["CMD", "sh", "-c", "curl -f https://localhost/health -k || curl -f http://localhost/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 30s
+      start_period: 45s
     labels:
       - "com.docker.compose.service=frontend"
       - "com.seuraseung.service=frontend"
-      - "com.seuraseung.version=2.0.0"
-
-  # SSL 자동 갱신 (선택사항)
-  ssl-renewer:
-    image: seuraseung-frontend:latest
-    container_name: seuraseung-ssl-renewer
-    restart: unless-stopped
-    volumes:
-      - ssl_certs:/etc/ssl
-      - certbot_www:/var/www/certbot
-    environment:
-      - DOMAIN=seurasaeng.site
-      - EMAIL=admin@seurasaeng.site
-    command: ["/scripts/ssl-renewal.sh", "daemon"]
-    networks:
-      - frontend-network
-    depends_on:
-      - frontend
-    profiles:
-      - ssl-renewal
+      - "com.seuraseung.version=2.1.0"
+      - "com.seuraseung.ssl=auto-letsencrypt"

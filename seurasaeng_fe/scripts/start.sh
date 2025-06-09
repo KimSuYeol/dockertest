@@ -5,19 +5,28 @@ DOMAIN="${DOMAIN:-seurasaeng.site}"
 EMAIL="${EMAIL:-admin@seurasaeng.site}"
 
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] STARTUP: $1"
 }
 
-log "Starting Seurasaeng Frontend with Auto-SSL..."
+log "🚀 Starting Seurasaeng Frontend with Auto-SSL..."
+log "Domain: $DOMAIN"
+log "Email: $EMAIL"
 
-# SSL 인증서 설정 실행
+# 권한 초기화
+log "Setting up permissions..."
+/scripts/init-permissions.sh
+
+# SSL 인증서 설정
+log "Setting up SSL certificates..."
 /scripts/setup-ssl.sh
 
-# 권한 설정
-chown -R nginx:nginx /usr/share/nginx/html /var/log/nginx /var/www/certbot
-chmod -R 755 /usr/share/nginx/html /var/www/certbot
+# Nginx 설정 테스트
+if nginx -t 2>/dev/null; then
+    log "✅ Nginx configuration is valid"
+else
+    log "❌ Nginx configuration error - regenerating SSL"
+    /scripts/setup-ssl.sh
+fi
 
-log "Starting Nginx..."
-
-# Nginx 시작
+log "🌐 Starting Nginx..."
 exec nginx -g "daemon off;"
