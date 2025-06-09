@@ -1,30 +1,17 @@
 #!/bin/bash
 set -e
-
 DOMAIN="${DOMAIN:-seurasaeng.site}"
 EMAIL="${EMAIL:-admin@seurasaeng.site}"
+log() { echo "[$(date '+%H:%M:%S')] $1"; }
 
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] STARTUP: $1"
-}
-
-log "🚀 Starting Seurasaeng Frontend with Auto-SSL..."
-log "Domain: $DOMAIN"
-log "Email: $EMAIL"
-
-# 권한 초기화
-log "Setting up permissions..."
+log "🚀 Starting with Auto-SSL..."
 /scripts/init-permissions.sh
-
-# SSL 인증서 설정
-log "Setting up SSL certificates..."
 /scripts/setup-ssl.sh
 
-# Nginx 설정 테스트
 if nginx -t 2>/dev/null; then
-    log "✅ Nginx configuration is valid"
+    log "✅ Nginx config valid"
 else
-    log "❌ Nginx configuration error - regenerating SSL"
+    log "❌ Nginx config error, regenerating SSL"
     /scripts/setup-ssl.sh
 fi
 

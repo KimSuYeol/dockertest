@@ -4,13 +4,9 @@ networks:
 
 volumes:
   nginx_logs:
-    driver: local
   ssl_certs:
-    driver: local
   certbot_www:
-    driver: local
   letsencrypt_data:
-    driver: local
 
 services:
   frontend:
@@ -31,13 +27,10 @@ services:
       - frontend-network
     volumes:
       - nginx_logs:/var/log/nginx
-      - /home/ubuntu/logs/nginx:/host/logs/nginx
       - ssl_certs:/etc/ssl
       - certbot_www:/var/www/certbot
       - letsencrypt_data:/etc/letsencrypt
     environment:
-      - NGINX_WORKER_PROCESSES=auto
-      - NGINX_WORKER_CONNECTIONS=1024
       - DOMAIN=seurasaeng.site
       - EMAIL=admin@seurasaeng.site
       - AUTO_SSL=true
@@ -47,8 +40,3 @@ services:
       timeout: 15s
       retries: 3
       start_period: 45s
-    labels:
-      - "com.docker.compose.service=frontend"
-      - "com.seuraseung.service=frontend"
-      - "com.seuraseung.version=2.1.0"
-      - "com.seuraseung.ssl=auto-letsencrypt"
