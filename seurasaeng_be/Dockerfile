@@ -3,22 +3,17 @@ FROM eclipse-temurin:21-jdk AS builder
 
 WORKDIR /app
 
-# Maven Wrapper 복사 (있다면)
-COPY mvnw* ./
-COPY .mvn .mvn
-
 # pom.xml 복사 (의존성 캐싱 최적화)
 COPY pom.xml ./
 
-# 의존성 다운로드
-RUN chmod +x mvnw || true
-RUN ./mvnw dependency:go-offline -B || mvn dependency:go-offline -B
+# 의존성 다운로드 (시스템 Maven 사용)
+RUN mvn dependency:go-offline -B
 
 # 소스 코드 복사
 COPY src ./src
 
 # Spring Boot 애플리케이션 빌드
-RUN ./mvnw clean package -DskipTests -B || mvn clean package -DskipTests -B
+RUN mvn clean package -DskipTests -B
 
 # 빌드 결과 확인
 RUN ls -la target/
