@@ -13,13 +13,12 @@ volumes:
     driver: local
 
 services:
-  # React + Nginx 프론트엔드
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: https://seurasaeng.site/api  # HTTPS로 변경
+        VITE_API_URL: https://seurasaeng.site/api
     image: seuraseung-frontend:latest
     container_name: seuraseung-frontend
     restart: unless-stopped
@@ -29,14 +28,11 @@ services:
     networks:
       - frontend-network
     volumes:
-      # Nginx 로그 볼륨
       - nginx_logs:/var/log/nginx
       - /home/ubuntu/logs/nginx:/var/log/nginx
-      # Let's Encrypt 인증서 볼륨
       - certbot_conf:/etc/letsencrypt
       - certbot_www:/var/www/certbot
     environment:
-      # 환경별 설정
       - NGINX_WORKER_PROCESSES=auto
       - NGINX_WORKER_CONNECTIONS=1024
     healthcheck:
@@ -52,7 +48,6 @@ services:
     depends_on:
       - certbot
 
-  # Certbot for SSL certificates
   certbot:
     image: certbot/certbot:latest
     container_name: seuraseung-certbot
@@ -60,74 +55,3 @@ services:
       - certbot_conf:/etc/letsencrypt
       - certbot_www:/var/www/certbot
     command: certbot certonly --webroot --webroot-path=/var/www/certbot --email admin@seurasaeng.site --agree-tos --no-eff-email -d seurasaeng.site -d www.seurasaeng.site
-    profiles:
-      - tools
-
-  # 백엔드 연결시 주석 해제 (현재는 프론트엔드만 테스트)
-  # backend:
-  #   image: seuraseung-backend:latest
-  #   container_name: seuraseung-backend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8080:8080"
-  #   networks:
-  #     - frontend-network
-  #   environment:
-  #     SPRING_PROFILES_ACTIVE: prod
-  #     DATABASE_URL: jdbc:postgresql://postgres:5432/seuraseung
-  #     DATABASE_USERNAME: seuraseung
-  #     DATABASE_PASSWORD: seuraseung123!
-  #     REDIS_HOST: redis
-  #     REDIS_PORT: 6379
-  #     REDIS_PASSWORD: redis123!
-  #   depends_on:
-  #     - postgres
-  #     - redis
-
-  # PostgreSQL 데이터베이스 (백엔드 연결시 주석 해제)
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: seuraseung-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_DB: seuraseung
-  #     POSTGRES_USER: seuraseung
-  #     POSTGRES_PASSWORD: seuraseung123!
-  #     POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #     - ./database/postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-  #   ports:
-  #     - "5432:5432"
-  #   networks:
-  #     - frontend-network
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U seuraseung -d seuraseung"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-
-  # Redis 캐시 (백엔드 연결시 주석 해제)
-  # redis:
-  #   image: redis:6.0-alpine
-  #   container_name: seuraseung-redis
-  #   restart: unless-stopped
-  #   command: redis-server --appendonly yes --requirepass redis123!
-  #   volumes:
-  #     - redis_data:/data
-  #   ports:
-  #     - "6379:6379"
-  #   networks:
-  #     - frontend-network
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-  #     interval: 10s
-  #     timeout: 3s
-  #     retries: 5
-
-# 백엔드 연결시 주석 해제
-# volumes:
-#   postgres_data:
-#     driver: local
-#   redis_data:
-#     driver: local
