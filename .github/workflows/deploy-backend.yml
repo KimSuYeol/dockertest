@@ -77,10 +77,10 @@ jobs:
       run: |
         docker save seuraseung-backend:latest | gzip > seurasaeng_be-image.tar.gz
         
-    - name: Copy files to Back Server via Front Server
+    - name: Copy files to Back Server
       uses: appleboy/scp-action@v0.1.5
       with:
-        host: ${{ secrets.FRONT_SERVER_HOST }}
+        host: 10.0.2.166
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "seurasaeng_be-image.tar.gz,seurasaeng_be/deploy.sh,seurasaeng_be/docker-compose.yml,database/"
@@ -90,7 +90,7 @@ jobs:
     - name: Deploy Backend
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: ${{ secrets.FRONT_SERVER_HOST }}
+        host: 10.0.2.166
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         timeout: 900s
@@ -99,15 +99,9 @@ jobs:
           
           echo "🚀 Starting backend deployment..."
           
-          # Back Server로 파일 전송
-          echo "📦 Transferring files to back server..."
-          scp -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be-image.tar.gz ubuntu@10.0.2.166:/home/ubuntu/
-          scp -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be/ ubuntu@10.0.2.166:/home/ubuntu/
-          scp -o StrictHostKeyChecking=no -r /home/ubuntu/database/ ubuntu@10.0.2.166:/home/ubuntu/
-          
-          # Back Server에서 배포 실행
-          echo "🎯 Executing deployment on back server..."
-          ssh -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'bash /home/ubuntu/seurasaeng_be/deploy.sh'
+          # 배포 스크립트 실행
+          chmod +x /home/ubuntu/seurasaeng_be/deploy.sh
+          bash /home/ubuntu/seurasaeng_be/deploy.sh
           
           echo "✅ Backend deployment completed"
 
