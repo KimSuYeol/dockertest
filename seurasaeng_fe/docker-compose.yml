@@ -18,7 +18,13 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: https://seurasaeng.site/api
+        VITE_SOCKET_URL: ${VITE_SOCKET_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_MOBILITY_API_KEY: ${VITE_MOBILITY_API_KEY}
+        VITE_KAKAOMAP_API_KEY: ${VITE_KAKAOMAP_API_KEY}
+        VITE_PERPLEXITY_API_KEY: ${VITE_PERPLEXITY_API_KEY}
+        VITE_MOBILITY_API_BASE_URL: ${VITE_MOBILITY_API_BASE_URL}
+        VITE_KAKAOMAP_API_BASE_URL: ${VITE_KAKAOMAP_API_BASE_URL}
     image: seuraseung-frontend:latest
     container_name: seuraseung-frontend
     restart: unless-stopped

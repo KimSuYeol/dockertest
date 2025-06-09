@@ -37,6 +37,69 @@ cd /home/ubuntu
 DOMAIN="seurasaeng.site"
 EMAIL="admin@seurasaeng.site"
 
+# .env 파일 검증 함수
+validate_env_file() {
+    log_info "환경변수 파일을 검증합니다..."
+    
+    if [ ! -f "seurasaeng_fe/.env" ]; then
+        log_error ".env 파일이 없습니다. seurasaeng_fe/.env 파일을 생성해주세요."
+        log_info "필요한 환경변수들:"
+        log_info "  - VITE_SOCKET_URL"
+        log_info "  - VITE_API_BASE_URL" 
+        log_info "  - VITE_MOBILITY_API_KEY"
+        log_info "  - VITE_KAKAOMAP_API_KEY"
+        log_info "  - VITE_PERPLEXITY_API_KEY"
+        log_info "  - VITE_MOBILITY_API_BASE_URL"
+        log_info "  - VITE_KAKAOMAP_API_BASE_URL"
+        exit 1
+    fi
+    
+    # .env 파일 권한 확인 및 수정
+    chmod 600 seurasaeng_fe/.env
+    
+    # 필수 환경변수 확인
+    required_vars=("VITE_SOCKET_URL" "VITE_API_BASE_URL" "VITE_MOBILITY_API_KEY" "VITE_KAKAOMAP_API_KEY" "VITE_PERPLEXITY_API_KEY")
+    missing_vars=()
+    
+    for var in "${required_vars[@]}"; do
+        if ! grep -q "^${var}=" seurasaeng_fe/.env; then
+            missing_vars+=("$var")
+        fi
+    done
+    
+    if [ ${#missing_vars[@]} -ne 0 ]; then
+        log_error "다음 환경변수들이 .env 파일에 없습니다:"
+        for var in "${missing_vars[@]}"; do
+            log_error "  - $var"
+        done
+        exit 1
+    fi
+    
+    # API 키 길이 검증 (기본적인 검증)
+    if grep -q "^VITE_MOBILITY_API_KEY=$" seurasaeng_fe/.env || \
+       grep -q "^VITE_KAKAOMAP_API_KEY=$" seurasaeng_fe/.env || \
+       grep -q "^VITE_PERPLEXITY_API_KEY=$" seurasaeng_fe/.env; then
+        log_warning "일부 API 키가 비어있을 수 있습니다. .env 파일을 확인해주세요."
+    fi
+    
+    log_success "✅ 환경변수 파일 검증 완료"
+    
+    # 환경변수 요약 출력 (값은 마스킹)
+    log_info "=== 📋 환경변수 설정 요약 ==="
+    while IFS='=' read -r key value; do
+        if [[ $key =~ ^VITE_ ]] && [[ ! $key =~ ^# ]]; then
+            if [[ $key =~ KEY$ ]]; then
+                # API 키는 마스킹
+                masked_value="${value:0:8}***${value: -4}"
+                log_info "  $key: $masked_value"
+            else
+                log_info "  $key: $value"
+            fi
+        fi
+    done < seurasaeng_fe/.env
+    echo
+}
+
 # SSL 인증서 설정 함수
 setup_ssl_certificates() {
     log_info "SSL 인증서를 설정합니다..."
@@ -120,6 +183,9 @@ EOF
     log_success "✅ SSL 인증서 자동 갱신 설정 완료"
 }
 
+# 환경변수 파일 검증 실행
+validate_env_file
+
 # 이전 배포 백업 (롤백 대비)
 log_info "이전 배포 백업 중..."
 if [ -f "docker-compose.yml.backup" ]; then
@@ -141,7 +207,7 @@ if [ -f "seurasaeng_fe-image.tar.gz" ]; then
         exit 1
     fi
 else
-    log_warning "seurasaeng_fe-image.tar.gz 파일이 없습니다. 기존 이미지를 사용합니다."
+    log_warning "seurasaeng_fe-image.tar.gz 파일이 없습니다. 새로 빌드합니다."
 fi
 
 # SSL 인증서 설정
@@ -185,14 +251,36 @@ fi
 # Nginx 설정 파일 검증
 if [ -f "seurasaeng_fe/nginx/nginx.conf" ] && [ -f "seurasaeng_fe/nginx/default.conf" ]; then
     log_success "✅ Nginx 설정 파일 확인 완료"
+    
+    # WebSocket 설정 확인
+    if grep -q "/ws" seurasaeng_fe/nginx/default.conf; then
+        log_success "✅ WebSocket 프록시 설정 확인됨"
+    else
+        log_warning "⚠️ WebSocket 프록시 설정이 없습니다. default.conf를 업데이트해주세요."
+    fi
 else
     log_error "❌ Nginx 설정 파일이 누락되었습니다."
     exit 1
 fi
 
-# 새 컨테이너 시작
-log_info "새로운 컨테이너를 시작합니다..."
+# 새 컨테이너 시작 (환경변수 포함 빌드)
+log_info "새로운 컨테이너를 빌드하고 시작합니다..."
 cd seurasaeng_fe
+
+# 환경변수 로드 확인
+if [ -f ".env" ]; then
+    log_info "환경변수 파일 로드 중..."
+    # .env 파일이 있으면 docker-compose가 자동으로 읽음
+else
+    log_error ".env 파일이 없습니다!"
+    exit 1
+fi
+
+# 이미지 빌드 (캐시 없이 새로 빌드하여 환경변수 적용)
+log_info "Docker 이미지를 새로 빌드합니다 (환경변수 적용)..."
+docker-compose build --no-cache
+
+# 컨테이너 시작
 docker-compose up -d
 cd /home/ubuntu
 
@@ -277,6 +365,14 @@ if curl -f -s --connect-timeout 10 --max-time 30 http://${BACKEND_IP}:${BACKEND_
             log_success "✅ HTTP API 프록시는 정상 작동"
         fi
     fi
+    
+    # WebSocket 연결 테스트
+    log_info "WebSocket 프록시를 테스트합니다..."
+    if curl -f -s -k --connect-timeout 5 --max-time 10 https://localhost/ws >/dev/null 2>&1; then
+        log_success "✅ WebSocket 프록시 경로 접근 가능"
+    else
+        log_warning "⚠️ WebSocket 프록시 연결을 확인할 수 없습니다."
+    fi
 else
     log_warning "⚠️ 백엔드 서버에 연결할 수 없습니다."
     log_info "백엔드 서버가 실행 중인지 확인해주세요: http://${BACKEND_IP}:${BACKEND_PORT}/api/actuator/health"
@@ -353,6 +449,15 @@ check_ssl_status() {
 
 check_ssl_status
 
+# 환경변수 적용 확인
+log_info "컨테이너 내 환경변수 적용 확인..."
+if docker exec seuraseung-frontend env | grep -q "VITE_"; then
+    log_success "✅ 환경변수가 컨테이너에 적용되었습니다:"
+    docker exec seuraseung-frontend env | grep "VITE_" | head -3
+else
+    log_warning "⚠️ 환경변수 적용을 확인할 수 없습니다."
+fi
+
 # 배포 완료 메시지
 log_success "🎉 HTTPS 지원 Frontend 배포가 완료되었습니다!"
 echo
@@ -361,6 +466,7 @@ log_info "🔒 HTTPS 웹사이트: https://$DOMAIN"
 log_info "🌐 HTTP 웹사이트: http://13.125.200.221 (HTTPS로 리다이렉트됨)"
 log_info "🔍 HTTPS 헬스체크: https://$DOMAIN/health"
 log_info "🔍 HTTP 헬스체크: http://13.125.200.221/health"
+log_info "🔌 WebSocket 연결: wss://$DOMAIN/ws"
 if curl -f -s http://${BACKEND_IP}:${BACKEND_PORT}/api/actuator/health >/dev/null 2>&1; then
     log_info "🔗 HTTPS API 프록시: https://$DOMAIN/api/actuator/health"
     log_info "🔗 HTTP API 프록시: http://13.125.200.221/api/actuator/health"
@@ -374,19 +480,23 @@ log_info "📋 Nginx 로그: docker logs seuraseung-frontend"
 log_info "🔧 Nginx 설정 확인: docker exec seuraseung-frontend cat /etc/nginx/conf.d/default.conf"
 log_info "🔒 SSL 인증서 확인: docker run --rm -v certbot_conf:/etc/letsencrypt certbot/certbot:latest certificates"
 log_info "🔄 SSL 수동 갱신: /home/ubuntu/renew-ssl.sh"
+log_info "🔍 환경변수 확인: docker exec seuraseung-frontend env | grep VITE_"
 
 # 배포 정보 기록
 {
     echo "$(date): HTTPS Frontend deployment completed successfully"
     echo "  - Frontend Health (HTTP): HEALTHY"
     echo "  - Frontend Health (HTTPS): $(curl -f -s -k https://localhost/health >/dev/null 2>&1 && echo "HEALTHY" || echo "FAILED")"
+    echo "  - Environment Variables: $(docker exec seuraseung-frontend env | grep -c "VITE_" || echo "0") variables loaded"
     if curl -f -s http://${BACKEND_IP}:${BACKEND_PORT}/api/actuator/health >/dev/null 2>&1; then
         echo "  - Backend Connectivity: VERIFIED"
         echo "  - API Proxy (HTTPS): $(curl -f -s -k https://localhost/api/actuator/health >/dev/null 2>&1 && echo "WORKING" || echo "FAILED")"
         echo "  - API Proxy (HTTP): $(curl -f -s http://localhost/api/actuator/health >/dev/null 2>&1 && echo "WORKING" || echo "FAILED")"
+        echo "  - WebSocket Proxy: $(curl -f -s -k https://localhost/ws >/dev/null 2>&1 && echo "ACCESSIBLE" || echo "FAILED")"
     else
         echo "  - Backend Connectivity: NOT_AVAILABLE"
         echo "  - API Proxy: BACKEND_DOWN"
+        echo "  - WebSocket Proxy: BACKEND_DOWN"
     fi
     echo "  - Static Files (HTTP): SERVING"
     echo "  - Static Files (HTTPS): $(curl -f -s -k https://localhost/ >/dev/null 2>&1 && echo "SERVING" || echo "FAILED")"
@@ -405,4 +515,4 @@ log_info "=== 💾 시스템 리소스 사용량 ==="
 df -h | grep -E "/$|/home"
 free -h
 
-log_success "🔒 HTTPS 지원 프론트엔드가 완전히 준비되었습니다. 보안 서비스 이용이 가능합니다!"
+log_success "🔒 HTTPS 지원 프론트엔드가 완전히 준비되었습니다. 환경변수가 적용된 보안 서비스 이용이 가능합니다!"
