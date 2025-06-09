@@ -77,45 +77,54 @@ jobs:
       run: |
         docker save seuraseung-backend:latest | gzip > seurasaeng_be-image.tar.gz
         
-    - name: Copy files to Back Server
+    - name: Copy files to Back Server via Front Server
       uses: appleboy/scp-action@v0.1.5
       with:
-        host: 10.0.2.166
+        host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "seurasaeng_be-image.tar.gz,seurasaeng_be/deploy.sh,seurasaeng_be/docker-compose.yml,database/"
         target: "/home/ubuntu/"
         timeout: 600s
         
-    - name: Deploy Backend
+    - name: Deploy Backend via Front Server (using susumon.pem)
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: 10.0.2.166
+        host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         timeout: 900s
         script: |
           set -e
           
-          echo "🚀 Starting backend deployment..."
+          echo "🚀 Starting backend deployment via front server..."
           
-          # 배포 스크립트 실행
-          chmod +x /home/ubuntu/seurasaeng_be/deploy.sh
-          bash /home/ubuntu/seurasaeng_be/deploy.sh
+          # susumon.pem 키 권한 설정
+          chmod 600 ~/.ssh/susumon.pem
+          
+          # Back Server로 파일 전송 (susumon.pem 사용)
+          echo "📦 Transferring files to back server using susumon.pem..."
+          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be-image.tar.gz ubuntu@10.0.2.166:/home/ubuntu/
+          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/seurasaeng_be/ ubuntu@10.0.2.166:/home/ubuntu/
+          scp -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no -r /home/ubuntu/database/ ubuntu@10.0.2.166:/home/ubuntu/
+          
+          # Back Server에서 배포 실행 (susumon.pem 사용)
+          echo "🎯 Executing deployment on back server using susumon.pem..."
+          ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'bash /home/ubuntu/seurasaeng_be/deploy.sh'
           
           echo "✅ Backend deployment completed"
 
-    - name: Backend Health Check
+    - name: Backend Health Check via Front Server
       uses: appleboy/ssh-action@v1.0.0
       with:
-        host: 10.0.2.166
+        host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         timeout: 300s
         script: |
           set -e
           
-          echo "🔍 Testing backend health..."
+          echo "🔍 Testing backend health via front server..."
           
           MAX_ATTEMPTS=30
           ATTEMPT=1
@@ -123,14 +132,15 @@ jobs:
           while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
             echo "⏳ Testing backend health... (${ATTEMPT}/${MAX_ATTEMPTS})"
             
-            if curl -f -s http://localhost:8080/actuator/health > /dev/null; then
+            # susumon.pem 키로 Back Server에서 헬스체크
+            if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/actuator/health' > /dev/null; then
               echo "✅ Backend health check passed"
               break
             fi
             
             if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
               echo "❌ Backend health check failed"
-              docker logs seuraseung-backend --tail=20
+              ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'docker logs seuraseung-backend --tail=20'
               exit 1
             fi
             
@@ -139,3 +149,25 @@ jobs:
           done
           
           echo "🎉 Backend deployment successful!"
+
+  post-deployment:
+    name: Post Deployment Summary
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    if: always()
+    
+    steps:
+    - name: Deployment Summary
+      run: |
+        echo "## Backend Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.deploy-backend.result }}" = "success" ]; then
+          echo "- **Backend API**: http://10.0.2.166:8080" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend Proxy**: https://seurasaeng.site/api" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Status**: ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+        fi
