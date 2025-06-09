@@ -1,5 +1,5 @@
 # 멀티 스테이지 빌드 - Builder Stage
-FROM openjdk:21-jdk AS builder
+FROM eclipse-temurin:21-jdk AS builder
 
 WORKDIR /app
 
@@ -23,8 +23,8 @@ RUN ./mvnw clean package -DskipTests -B || mvn clean package -DskipTests -B
 # 빌드 결과 확인
 RUN ls -la target/
 
-# Production Stage - OpenJDK 21 JRE (풀 버전 사용)
-FROM openjdk:21-jre
+# Production Stage - Eclipse Temurin 21 JRE (안정적인 공식 배포판)
+FROM eclipse-temurin:21-jre
 
 # 한국 시간대 설정
 RUN apt-get update && \
