@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   backend-network:
     driver: bridge
@@ -38,7 +36,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # Redis 캐시 (단순화된 설정)
+  # Redis 캐시
   redis:
     image: redis:6.0-alpine
     container_name: seuraseung-redis
@@ -60,7 +58,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # Spring Boot 백엔드 (단순화)
+  # Spring Boot 백엔드
   backend:
     build:
       context: .
@@ -69,22 +67,26 @@ services:
     container_name: seuraseung-backend
     restart: unless-stopped
     environment:
-      # 기존 application.properties에서 환경변수로 참조하는 것들만 설정
+      # 데이터베이스 환경변수
       DB_URL: jdbc:postgresql://postgres:5432/seuraseung
       DB_USERNAME: seuraseung
       DB_PASSWORD: seuraseung123!
+      
+      # Redis 환경변수
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221
-      # 나머지는 더미값 또는 기본값 사용
-      AWS_ACCESS_KEY: dummy
-      AWS_SECRET_KEY: dummy
+      REDIS_DB: 0
+      
+      # 기타 필수 환경변수
+      AWS_ACCESS_KEY: dummy-access-key
+      AWS_SECRET_KEY: dummy-secret-key
       AWS_REGION: ap-northeast-2
       AWS_BUCKET: dummy-bucket
       MAIL_USERNAME: dummy@gmail.com
-      MAIL_PASSWORD: dummy
-      ENCRYPTION_KEY: seuraseung-key-2024
+      MAIL_PASSWORD: dummy-password
+      ENCRYPTION_KEY: seuraseung-encryption-key-2024
       JWT_KEY: seuraseung-jwt-secret-key-2024
+      CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221
     volumes:
       - backend_logs:/app/logs
       - /home/ubuntu/logs/spring:/app/logs
@@ -102,9 +104,9 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 90s
+      start_period: 120s
 
-  # 데이터베이스 초기화 (한 번만 실행)
+  # 데이터베이스 초기화
   db-setup:
     image: postgres:15.12
     container_name: seuraseung-db-setup
