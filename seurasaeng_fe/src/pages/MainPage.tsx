@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import Chatbot from './Chatbot';
-import MyPageDrawer from './MyPageDrawer';
-import BottomBar from './BottomBar';
-import PopupModal from './PopupModal';
+import Chatbot from '../components/Chatbot';
+import MyPageDrawer from '../components/MyPageDrawer';
+import BottomBar from '../components/BottomBar';
+import PopupModal from '../components/PopupModal';
 import notices from '../mocks/noticesMock';
 
 // 드로어 관련 상수
@@ -165,8 +165,10 @@ export default function MainPage() {
             <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">실시간으로 셔틀 위치를 확인하세요.</span>
             <span className="ml-auto mt-auto"><img src="/shuttle.png" alt="실시간 셔틀" className="w-7 h-7" /></span>
           </button>
-          <button className="col-span-1 bg-[#DEE9FF] rounded-xl p-4 flex flex-col items-start shadow-sm min-h-[90px]" onClick={() => navigate('/qr-scan')}>
-            <span className="font-bold text-base text-[#5382E0]">QR 스캔 테스트</span>
+          <button className="col-span-1 bg-[#DEE9FF] rounded-xl p-4 flex flex-col items-start shadow-sm min-h-[90px]" onClick={() => navigate('/admin')}>
+            <span className="font-bold text-base text-[#5382E0]">관리자 페이지</span>
+            <span className="text-xs mb-2 text-[#5382E0] w-36 text-left">관리자 기능을 테스트하세요.</span>
+            <span className="ml-auto mt-auto"><img src="/admin.png" alt="관리자" className="w-7 h-7" /></span>
           </button>
         </div>
       </div>

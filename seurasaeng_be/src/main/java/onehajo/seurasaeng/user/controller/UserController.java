@@ -14,6 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
@@ -56,11 +59,15 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginReqDTO request) {
-        String token = userService.loginUser(request);
+        String[] str = userService.loginUser(request);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "로그인 성공");
+        response.put("role", str[1]); // str[1] 포함
 
         return ResponseEntity.ok()
-                .header("Authorization", "Bearer " + token) // ✅ JWT를 헤더에 포함
-                .body("로그인 성공"); // 혹은 사용자 정보 등 추가 가능
+                .header("Authorization", "Bearer " + str[0]) // ✅ JWT를 헤더에 포함
+                .body(response); // 혹은 사용자 정보 등 추가 가능
     }
 
     @GetMapping("/auto-login")

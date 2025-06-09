@@ -1,22 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import BottomBar from './BottomBar';
+import BottomBar from '../components/BottomBar';
 import shuttleData from '../mocks/shuttle_schedule.json';
-import SlideTab from './SlideTab';
-import TopBar from './TopBar';
-
-type TimetableItem = {
-  거점: string;
-  차량규격: string;
-  소요시간: string;
-  승차장소?: string;
-  하차장소?: string;
-  출발시간: { [key: string]: string }[];
-};
-
-interface ShuttleScheduleJson {
-  출근: TimetableItem[];
-  퇴근: TimetableItem[];
-}
+import SlideTab from '../components/SlideTab';
+import TopBar from '../components/TopBar';
+import type { TimetableItem, ShuttleScheduleJson } from '../types/ShuttleTypes';
 
 // Extract unique locations from 출근 and 퇴근
 const getLocations = () => {
@@ -62,7 +49,7 @@ function handleTimeInput(val: string, setValue: (v: string) => void) {
   setValue(formatted);
 }
 
-export default function ShuttleTimetablePage() {
+export default function ShuttleTimetablePage({ isAdmin = false }) {
   // timetableData는 수정/삭제를 위해 state로 관리
   const [timetableData, setTimetableData] = useState<ShuttleScheduleJson>(
     shuttleData as unknown as ShuttleScheduleJson
@@ -122,24 +109,19 @@ export default function ShuttleTimetablePage() {
   // 현재 locationIdx(선택된 거점)의 카드에서만 추가/수정 인풋이 열려 있을 때
   const isCurrentLocationEditing = Boolean(editIdx && editIdx.itemIdx === locationIdx);
 
+  useEffect(() => {
+    if (isAdmin) {
+      setIsEditMode(true);
+      setOriginalTimetableData(JSON.parse(JSON.stringify(timetableData)));
+    }
+  // eslint-disable-next-line
+  }, [isAdmin]);
+
   return (
     <div className="bg-white pb-16" style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}>
       {/* 상단바 */}
       <TopBar 
-        title="셔틀 시간표" 
-        rightContent={
-          !isEditMode && (
-            <button
-              className="text-white text-sm border border-white rounded px-2 py-1 bg-[#5382E0]"
-              onClick={() => {
-                setOriginalTimetableData(JSON.parse(JSON.stringify(timetableData)));
-                setIsEditMode(true);
-              }}
-            >
-              수정하기
-            </button>
-          )
-        }
+        title={isAdmin ? "시간표 관리" : "셔틀 시간표"}
       />
       {/* SlideTab 컴포넌트로 대체 */}
       <div className="pt-16">
@@ -365,7 +347,7 @@ export default function ShuttleTimetablePage() {
       <BottomBar />
       {/* 하단 고정 완료/취소 바 (수정 모드에서만) */}
       {isEditMode && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white flex h-16 px-4 gap-3 items-center justify-center">
+        <div className="bottom-0 left-0 right-0 z-30 bg-white flex h-16 px-4 gap-3 items-center justify-center">
           <button
             className={
               "flex-1 h-11 rounded-lg border font-semibold text-base " +
@@ -377,10 +359,9 @@ export default function ShuttleTimetablePage() {
             onClick={() => {
               if (isCurrentLocationEditing) return;
               if (originalTimetableData) setTimetableData(originalTimetableData);
-              setIsEditMode(false);
-              setOriginalTimetableData(null);
+              // 수정모드는 유지
             }}
-          >취소</button>
+          >초기화</button>
           <button
             className={
               "flex-1 h-11 rounded-lg font-semibold text-base " +

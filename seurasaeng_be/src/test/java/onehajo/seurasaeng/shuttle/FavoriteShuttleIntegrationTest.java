@@ -81,7 +81,7 @@ public class FavoriteShuttleIntegrationTest {
 
         userRepository.save(user);
 
-        token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail());
+        token = jwtUtil.generateToken(user.getId(), user.getName(), user.getEmail(), "user");
     }
 
     @Test

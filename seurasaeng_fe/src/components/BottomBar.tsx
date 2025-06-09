@@ -1,11 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HiHome, HiClipboardDocumentList } from 'react-icons/hi2';
 import { FaBusAlt } from 'react-icons/fa';
-
-interface BottomBarProps {
-  transform?: string;
-  transition?: string;
-}
+import type { BottomBarProps } from '../types/ComponentTypes';
 
 export default function BottomBar({ transform, transition }: BottomBarProps) {
   const navigate = useNavigate();
@@ -18,7 +14,7 @@ export default function BottomBar({ transform, transition }: BottomBarProps) {
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex justify-around items-center px-4"
+      className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex justify-around items-center px-4 z-45"
       style={{
         ...(transform && { transform }),
         ...(transition && { transition }),

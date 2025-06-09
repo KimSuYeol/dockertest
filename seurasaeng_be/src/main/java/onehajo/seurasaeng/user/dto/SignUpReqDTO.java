@@ -10,6 +10,7 @@ public class SignUpReqDTO {
     private String name;
     private String email;
     private String password;
+    private String role;
 
     // 기본 생성자 (필수)
     public SignUpReqDTO() {}

@@ -1,12 +1,14 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import inquiries from "../mocks/inquiriesMock";
-import BottomBar from './BottomBar';
-import TopBar from './TopBar';
+import BottomBar from '../components/BottomBar';
+import TopBar from '../components/TopBar';
 
-const InquiryDetailPage = () => {
+const InquiryDetailPage = ({ isAdmin = false }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const inquiry = inquiries.find(q => q.id === Number(id));
+  const [answer, setAnswer] = useState('');
 
   if (!inquiry) {
     return (
@@ -27,6 +29,14 @@ const InquiryDetailPage = () => {
   const dateObj = new Date(inquiry.date);
   const formattedDate = `${dateObj.getFullYear()}.${(dateObj.getMonth()+1).toString().padStart(2,'0')}.${dateObj.getDate().toString().padStart(2,'0')} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
 
+  const handleAnswerSubmit = () => {
+    // TODO: 답변 등록 로직 구현
+    alert('답변이 등록되었습니다. (실제 저장은 미구현)');
+    setAnswer('');
+  };
+
+  const isAnswerValid = answer.trim() !== '';
+
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#fdfdfe] pb-16">
       {/* 상단 바 */}
@@ -40,17 +50,15 @@ const InquiryDetailPage = () => {
       </div>
 
       {/* 문의 내용 */}
-      <div className="mx-5 mb-8 bg-[#DEE9FF] border border-[#5382E0] rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
+      <div className="mx-5 mb-8 border border-[#5382E0] rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
         {inquiry.content}
       </div>
 
       {/* 답변 */}
       {inquiry.answer && (
-        <div className="mx-5 text-xs text-gray-400 mb-1 font-semibold">답변</div>
-      )}
-      <div className="mx-5 mb-2 bg-white border border-[#DEE9FF] rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
-        {inquiry.answer ? (
-          <>
+        <>
+          <div className="mx-5 text-xs text-gray-400 mb-1 font-semibold">관리자 답변</div>
+          <div className="mx-5 mb-2 bg-white border border-gray-400 rounded-xl p-4 text-gray-800 text-[15px] whitespace-pre-line">
             {inquiry.answer}
             {inquiry.answerDate && (
               <div className="mt-3 text-xs text-gray-400">
@@ -64,9 +72,27 @@ const InquiryDetailPage = () => {
                 })()}
               </div>
             )}
-          </>
-        ) : '아직 답변이 등록되지 않았습니다.'}
-      </div>
+          </div>
+        </>
+      )}
+      {isAdmin && !inquiry.answer && (
+        <div className="mb-2 bg-white rounded-xl p-4 text-gray-800 text-[15px]">
+          <div className="mb-2 text-xs text-gray-400 font-semibold">답변 작성</div>
+          <textarea
+            value={answer}
+            onChange={e => setAnswer(e.target.value)}
+            placeholder="답변을 입력하세요."
+            className="w-full h-28 p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#5382E0] resize-none mb-3"
+          />
+          <button
+            onClick={handleAnswerSubmit}
+            className={`w-full h-11 rounded-lg font-bold ${isAnswerValid ? 'bg-[#5382E0] text-white' : 'bg-gray-300 text-white cursor-not-allowed'}`}
+            disabled={!isAnswerValid}
+          >
+            등록
+          </button>
+        </div>
+      )}
       <BottomBar />
     </div>
   );

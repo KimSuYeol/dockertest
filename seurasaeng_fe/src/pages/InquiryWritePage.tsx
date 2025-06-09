@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import TopBar from './TopBar';
+import TopBar from '../components/TopBar';
 
 export default function MyInquiryWritePage() {
   const navigate = useNavigate();
@@ -11,6 +11,8 @@ export default function MyInquiryWritePage() {
     // TODO: 문의 등록 로직 구현
     navigate(-1);
   };
+
+  const isValid = title.trim() !== '' && inquiryContent.trim() !== '';
 
   return (
     <div className="fixed inset-0 flex flex-col bg-[#fdfdfe]">
@@ -45,7 +47,8 @@ export default function MyInquiryWritePage() {
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 h-12 bg-[#5382E0] text-white rounded-lg font-bold"
+            className={`flex-1 h-12 rounded-lg font-bold ${isValid ? 'bg-[#5382E0] text-white' : 'bg-gray-300 text-white cursor-not-allowed'}`}
+            disabled={!isValid}
           >
             등록
           </button>

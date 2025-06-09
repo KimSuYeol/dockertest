@@ -1,22 +1,24 @@
 import './App.css'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import LandingPage from './components/LandingPage'
-import LoginPage from './components/LoginPage'
-import RegisterPage from './components/RegisterPage'
-import MainPage from './components/MainPage'
-import NoticePage from './components/NoticePage'
-import NoticeDetailPage from './components/NoticeDetailPage'
-import MyInquiryPage from './components/MyInquiryPage'
-import InquiryDetailPage from './components/InquiryDetailPage'
-import InquiryWritePage from './components/InquiryWritePage'
-import QrPage from './components/QrPage'
-import MyRideHistoryPage from './components/MyRideHistoryPage'
-import QrScanPage from './components/QrScanPage'
-import ShuttleTimetablePage from './components/ShuttleTimetablePage'
+import LandingPage from './pages/LandingPage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import MainPage from './pages/MainPage'
+import NoticePage from './pages/NoticePage'
+import NoticeDetailPage from './pages/NoticeDetailPage'
+import MyInquiryPage from './pages/MyInquiryPage'
+import InquiryDetailPage from './pages/InquiryDetailPage'
+import InquiryWritePage from './pages/InquiryWritePage'
+import QrPage from './pages/QrPage'
+import MyRideHistoryPage from './pages/MyRideHistoryPage'
+import QrScanPage from './pages/QrScanPage'
+import ShuttleTimetablePage from './pages/ShuttleTimetablePage'
 import AdminPageGps from './pages/AdminPageGps'
 import EmployeeGPSApp from './pages/EmployeePageGps'
-import ResetPasswordPage from './components/ResetPasswordPage'
-import EditProfilePage from './components/EditProfilePage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import EditProfilePage from './pages/EditProfilePage'
+import AdminMainPage from './pages/AdminMainPage'
+import NoticeWritePage from './pages/NoticeWritePage'
 
 function App() {
   return (
@@ -40,6 +42,12 @@ function App() {
           <Route path="/admin/race-gps" element={<AdminPageGps />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/edit-profile" element={<EditProfilePage />} />
+          <Route path="/admin" element={<AdminMainPage />} />
+          <Route path="/admin/notice" element={<NoticePage isAdmin={true} />} />
+          <Route path="/admin/notice/write" element={<NoticeWritePage />} />
+          <Route path="/admin/inquiry" element={<MyInquiryPage isAdmin={true} />} />
+          <Route path="/admin/inquiry/:id" element={<InquiryDetailPage isAdmin={true} />} />
+          <Route path="/admin/timetable" element={<ShuttleTimetablePage isAdmin={true} />} />
         </Routes>
       </div>
     </BrowserRouter>

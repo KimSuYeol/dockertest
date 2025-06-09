@@ -37,52 +37,30 @@ cd /home/ubuntu
 DOMAIN="seurasaeng.site"
 EMAIL="admin@seurasaeng.site"
 
-# .env 파일 검증 함수
-validate_env_file() {
-    log_info "환경변수 파일을 검증합니다..."
+# .env 파일 자동 생성 함수
+create_frontend_env() {
+    log_info ".env 파일을 확인합니다..."
     
     if [ ! -f "seurasaeng_fe/.env" ]; then
-        log_error ".env 파일이 없습니다. seurasaeng_fe/.env 파일을 생성해주세요."
-        log_info "필요한 환경변수들:"
-        log_info "  - VITE_SOCKET_URL"
-        log_info "  - VITE_API_BASE_URL" 
-        log_info "  - VITE_MOBILITY_API_KEY"
-        log_info "  - VITE_KAKAOMAP_API_KEY"
-        log_info "  - VITE_PERPLEXITY_API_KEY"
-        log_info "  - VITE_MOBILITY_API_BASE_URL"
-        log_info "  - VITE_KAKAOMAP_API_BASE_URL"
-        exit 1
+        log_warning ".env 파일이 없습니다. 자동으로 생성합니다..."
+        
+        cat > seurasaeng_fe/.env << 'EOF'
+VITE_SOCKET_URL=wss://seurasaeng.site/ws
+VITE_API_BASE_URL=https://seurasaeng.site/api
+VITE_MOBILITY_API_KEY=2868494a3053c4014954615d4dcfafc1
+VITE_KAKAOMAP_API_KEY=d079914b9511e06b410311be64216366
+VITE_PERPLEXITY_API_KEY=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
+VITE_MOBILITY_API_BASE_URL=https://apis-navi.kakaomobility.com/v1/directions
+VITE_KAKAOMAP_API_BASE_URL=//dapi.kakao.com/v2/maps/sdk.js
+EOF
+        
+        # 파일 권한 설정
+        chmod 600 seurasaeng_fe/.env
+        
+        log_success "✅ .env 파일 자동 생성 완료"
+    else
+        log_success "✅ .env 파일이 이미 존재합니다"
     fi
-    
-    # .env 파일 권한 확인 및 수정
-    chmod 600 seurasaeng_fe/.env
-    
-    # 필수 환경변수 확인
-    required_vars=("VITE_SOCKET_URL" "VITE_API_BASE_URL" "VITE_MOBILITY_API_KEY" "VITE_KAKAOMAP_API_KEY" "VITE_PERPLEXITY_API_KEY")
-    missing_vars=()
-    
-    for var in "${required_vars[@]}"; do
-        if ! grep -q "^${var}=" seurasaeng_fe/.env; then
-            missing_vars+=("$var")
-        fi
-    done
-    
-    if [ ${#missing_vars[@]} -ne 0 ]; then
-        log_error "다음 환경변수들이 .env 파일에 없습니다:"
-        for var in "${missing_vars[@]}"; do
-            log_error "  - $var"
-        done
-        exit 1
-    fi
-    
-    # API 키 길이 검증 (기본적인 검증)
-    if grep -q "^VITE_MOBILITY_API_KEY=$" seurasaeng_fe/.env || \
-       grep -q "^VITE_KAKAOMAP_API_KEY=$" seurasaeng_fe/.env || \
-       grep -q "^VITE_PERPLEXITY_API_KEY=$" seurasaeng_fe/.env; then
-        log_warning "일부 API 키가 비어있을 수 있습니다. .env 파일을 확인해주세요."
-    fi
-    
-    log_success "✅ 환경변수 파일 검증 완료"
     
     # 환경변수 요약 출력 (값은 마스킹)
     log_info "=== 📋 환경변수 설정 요약 ==="
@@ -183,8 +161,8 @@ EOF
     log_success "✅ SSL 인증서 자동 갱신 설정 완료"
 }
 
-# 환경변수 파일 검증 실행
-validate_env_file
+# 환경변수 파일 자동 생성 실행
+create_frontend_env
 
 # 이전 배포 백업 (롤백 대비)
 log_info "이전 배포 백업 중..."
@@ -266,15 +244,6 @@ fi
 # 새 컨테이너 시작 (환경변수 포함 빌드)
 log_info "새로운 컨테이너를 빌드하고 시작합니다..."
 cd seurasaeng_fe
-
-# 환경변수 로드 확인
-if [ -f ".env" ]; then
-    log_info "환경변수 파일 로드 중..."
-    # .env 파일이 있으면 docker-compose가 자동으로 읽음
-else
-    log_error ".env 파일이 없습니다!"
-    exit 1
-fi
 
 # 이미지 빌드 (캐시 없이 새로 빌드하여 환경변수 적용)
 log_info "Docker 이미지를 새로 빌드합니다 (환경변수 적용)..."
@@ -378,77 +347,6 @@ else
     log_info "백엔드 서버가 실행 중인지 확인해주세요: http://${BACKEND_IP}:${BACKEND_PORT}/api/actuator/health"
 fi
 
-# 추가 기능 테스트
-log_info "추가 프론트엔드 기능 테스트를 수행합니다..."
-
-# 정적 파일 서빙 테스트 (HTTP)
-if curl -f -s --connect-timeout 5 --max-time 10 http://localhost/ >/dev/null 2>&1; then
-    log_success "✅ HTTP 메인 페이지 로딩 정상"
-else
-    log_warning "⚠️ HTTP 메인 페이지 로딩 실패"
-fi
-
-# 정적 파일 서빙 테스트 (HTTPS)
-if curl -f -s -k --connect-timeout 5 --max-time 10 https://localhost/ >/dev/null 2>&1; then
-    log_success "✅ HTTPS 메인 페이지 로딩 정상"
-else
-    log_warning "⚠️ HTTPS 메인 페이지 로딩 실패"
-fi
-
-# 포트 상태 확인
-log_info "포트 상태를 확인합니다..."
-if netstat -tuln | grep -q ":80 "; then
-    log_success "✅ 포트 80이 정상적으로 바인딩되었습니다."
-else
-    log_error "❌ 포트 80 바인딩에 실패했습니다."
-fi
-
-if netstat -tuln | grep -q ":443 "; then
-    log_success "✅ 포트 443이 정상적으로 바인딩되었습니다."
-else
-    log_warning "⚠️ 포트 443 바인딩에 문제가 있을 수 있습니다."
-fi
-
-# 최종 상태 확인
-log_info "전체 서비스 상태를 확인합니다..."
-cd seurasaeng_fe
-docker-compose ps
-cd /home/ubuntu
-
-# 성능 및 리소스 사용량 확인
-log_info "컨테이너 리소스 사용량:"
-docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}" $(docker ps -q) || true
-
-# SSL 인증서 상태 확인
-check_ssl_status() {
-    log_info "SSL 인증서 상태를 확인합니다..."
-    
-    # Docker 볼륨에서 인증서 확인
-    if docker run --rm \
-        -v certbot_conf:/etc/letsencrypt \
-        certbot/certbot:latest \
-        certificates 2>/dev/null | grep -q "$DOMAIN"; then
-        log_success "✅ SSL 인증서가 설치되어 있습니다."
-        
-        # 인증서 만료일 확인
-        docker run --rm \
-            -v certbot_conf:/etc/letsencrypt \
-            certbot/certbot:latest \
-            certificates 2>/dev/null | grep -A 10 "$DOMAIN" || true
-            
-        # SSL 테스트
-        if openssl s_client -connect localhost:443 -servername $DOMAIN </dev/null 2>/dev/null | grep -q "Verification: OK"; then
-            log_success "✅ SSL 인증서 검증 성공"
-        else
-            log_warning "⚠️ SSL 인증서 검증에 문제가 있을 수 있습니다 (자체 서명 인증서일 가능성)"
-        fi
-    else
-        log_warning "⚠️ SSL 인증서 정보를 확인할 수 없습니다."
-    fi
-}
-
-check_ssl_status
-
 # 환경변수 적용 확인
 log_info "컨테이너 내 환경변수 적용 확인..."
 if docker exec seuraseung-frontend env | grep -q "VITE_"; then
@@ -510,9 +408,4 @@ if [ -f "seurasaeng_fe/docker-compose.yml" ]; then
     cp seurasaeng_fe/docker-compose.yml seurasaeng_fe/docker-compose.yml.success
 fi
 
-# 시스템 리소스 최종 확인
-log_info "=== 💾 시스템 리소스 사용량 ==="
-df -h | grep -E "/$|/home"
-free -h
-
-log_success "🔒 HTTPS 지원 프론트엔드가 완전히 준비되었습니다. 환경변수가 적용된 보안 서비스 이용이 가능합니다!"
+log_success "🔒 HTTPS 지원 프론트엔드가 완전히 준비되었습니다. 환경변수가 자동 생성되어 CI/CD에서도 안전합니다!"

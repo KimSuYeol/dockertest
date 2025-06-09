@@ -24,7 +24,7 @@ public class JwtUtil {
     }
 
     // ✅ 토큰 생성
-    public String generateToken(long id, String name, String email) {
+    public String generateToken(long id, String name, String email, String role) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + expiration);
 
@@ -32,6 +32,7 @@ public class JwtUtil {
                 .claim("id", id)
                 .claim("name", name)
                 .claim("email", email)
+                .claim("role", role)
                 .setIssuedAt(now)
                 .setExpiration(expiry)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -69,6 +70,17 @@ public class JwtUtil {
                 .getBody();
 
         return claims.get("email", String.class);
+    }
+
+    // ✅ 토큰에서 사용자 역할 추출
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(key) // 서명에 사용된 키와 동일한 키 사용
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        return claims.get("role", String.class);
     }
 
     // ✅ 토큰 유효성 검증

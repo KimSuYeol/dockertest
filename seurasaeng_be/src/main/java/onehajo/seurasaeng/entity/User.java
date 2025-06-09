@@ -24,18 +24,18 @@ public class User {
     private Long id;
 
     @NotNull
-    @Column(name = "user_name", columnDefinition = "varchar(10)")
+    @Column(name = "user_name", columnDefinition = "varchar(50)")
     @NotBlank(message = "이름은 필수 입력 값입니다.")
     private String name;
 
     @Email
     @NotNull
-    @Column(name = "user_email", columnDefinition = "varchar(50)")
+    @Column(name = "user_email", columnDefinition = "varchar(255)")
     @NotBlank(message = "이메일은 필수 입력 값입니다.")
     private String email;
 
     @NotNull
-    @Column(name = "user_password", columnDefinition = "varchar(50)")
+    @Column(name = "user_password", columnDefinition = "varchar(255)")
     @NotBlank(message = "비밀번호는 필수 입력 값입니다.")
     private String password;
 
