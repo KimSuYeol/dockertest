@@ -25,7 +25,7 @@ log_error() {
 
 # 로컬 .env 파일 확인
 check_local_env() {
-    if [ ! -f ".env.local" ]; then
+    if [ ! -f ".env" ]; then
         log_error ".env.local 파일이 없습니다. 먼저 생성해주세요:"
         echo ""
         echo "cat > .env.local << EOF"
