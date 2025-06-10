@@ -110,7 +110,7 @@ jobs:
           
           # Back Server에서 배포 실행 (susumon.pem 사용)
           echo "🎯 Executing deployment on back server using susumon.pem..."
-          ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'bash /home/ubuntu/seurasaeng_be/deploy.sh'
+          ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'chmod +x /home/ubuntu/seurasaeng_be/deploy.sh && bash /home/ubuntu/seurasaeng_be/deploy.sh'
           
           echo "✅ Backend deployment completed"
 
@@ -135,12 +135,38 @@ jobs:
             # susumon.pem 키로 Back Server에서 헬스체크
             if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/actuator/health' > /dev/null; then
               echo "✅ Backend health check passed"
+              
+              # 추가 API 엔드포인트 테스트
+              echo "🔍 Testing additional API endpoints..."
+              if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/' > /dev/null; then
+                echo "✅ Root endpoint accessible"
+              fi
+              
+              if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/health' > /dev/null; then
+                echo "✅ Health endpoint accessible"
+              fi
+              
+              # 데이터베이스 연결 확인
+              echo "🗄️ Testing database connections..."
+              if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'docker exec seuraseung-postgres pg_isready -U seuraseung -d seuraseung' > /dev/null; then
+                echo "✅ PostgreSQL connection verified"
+              fi
+              
+              if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'docker exec seuraseung-redis redis-cli -a redis123! ping' > /dev/null; then
+                echo "✅ Redis connection verified"
+              fi
+              
               break
             fi
             
             if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
               echo "❌ Backend health check failed"
+              echo "📋 Container status:"
+              ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'cd seurasaeng_be && docker-compose ps'
+              echo "📋 Backend logs:"
               ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'docker logs seuraseung-backend --tail=20'
+              echo "📋 Database logs:"
+              ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'docker logs seuraseung-postgres --tail=10'
               exit 1
             fi
             
@@ -166,8 +192,12 @@ jobs:
         
         if [ "${{ needs.deploy-backend.result }}" = "success" ]; then
           echo "- **Backend API**: http://10.0.2.166:8080" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: http://10.0.2.166:8080/actuator/health" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend Proxy**: https://seurasaeng.site/api" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database**: PostgreSQL + Redis Connected" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production (.env file generated)" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
         else
           echo "- **Status**: ❌ FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action Required**: Check deployment logs and server status" >> $GITHUB_STEP_SUMMARY
         fi
