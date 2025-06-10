@@ -22,13 +22,13 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# .env 파일 확인
+# .env 파일 확인 (GitHub Actions에서 생성해서 전송됨)
 if [ ! -f ".env" ]; then
-    log_error ".env 파일이 없습니다."
+    log_error ".env 파일이 없습니다. GitHub Actions에서 생성되어야 합니다."
     exit 1
 fi
 
-log_info ".env 파일 확인 완료"
+log_info ".env 파일 확인 완료 (GitHub Actions에서 생성됨)"
 
 # 필요한 디렉토리 생성
 mkdir -p init-scripts
@@ -67,30 +67,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 EOF
 
 log_info "초기화 스크립트 생성 완료"
-
-# 프로덕션용 .env 파일 생성 (배포 시)
-if [ ! -f ".env.prod" ]; then
-    cat > .env.prod << 'EOF'
-# Seurasaeng 프로덕션 환경 설정
-DB_URL=jdbc:postgresql://postgres:5432/postgres
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_SCHEMA=seurasaeng_prod
-AWS_ACCESS_KEY=AKIA4DJX53SXMNFOY662
-AWS_SECRET_KEY=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
-AWS_REGION=ap-northeast-2
-AWS_BUCKET=qrcode-s3-bucket
-ENCRYPTION_KEY=MyShuttleQRKey16
-REDIS_HOST=redis
-REDIS_PORT=6379
-REDIS_DB=0
-CORS_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221,https://13.125.200.221
-MAIL_USERNAME=youjiyeon4@gmail.com
-MAIL_PASSWORD=hmqv wsha xdgs hdie
-JWT_KEY=VlwEyVBsYt9V7zq57TejMnVUyzblYcfPQye08f7MGVA9XkHa
-EOF
-    log_info "프로덕션용 .env 파일 생성 완료"
-fi
 
 # 기존 컨테이너 정리
 log_info "기존 컨테이너 정리 중..."
@@ -158,7 +134,7 @@ echo ""
 echo "📊 데이터베이스 정보:"
 echo "  - 데이터베이스: postgres"
 echo "  - 스키마: seurasaeng_test, seurasaeng_prod"
-echo "  - 현재 사용: $(grep DB_SCHEMA .env | cut -d'=' -f2)"
+echo "  - 현재 사용: $(grep DB_SCHEMA .env | cut -d'=' -f2 2>/dev/null || echo 'seurasaeng_prod')"
 echo ""
 echo "📊 컨테이너 상태:"
 docker-compose ps
