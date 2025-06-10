@@ -103,8 +103,8 @@ EOF
 create_env_file() {
     log_info ".env 파일 생성 중..."
     
-    # 로컬 .env.local에서 실제 값 읽기
-    source .env.local
+    #
+    source .env
     
     cat > .env << EOF
 # ================================
