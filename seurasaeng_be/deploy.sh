@@ -2,7 +2,7 @@
 
 echo "🚀 Backend 배포 시작..."
 
-# .env 파일 생성 (첫 배포시 테이블 자동 생성 설정)
+# .env 파일 생성 (Entity가 사용하는 실제 스키마명으로 설정)
 cat > .env << EOF
 DB_URL=jdbc:postgresql://postgres:5432/seuraseung
 DB_USERNAME=seuraseung
@@ -21,7 +21,7 @@ CORS_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221
 MAIL_USERNAME=youjiyeon4@gmail.com
 MAIL_PASSWORD=hmqv wsha xdgs hdie
 SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
-SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=seurasaeng-prod
+SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=seurasaeng_test
 EOF
 
 echo "✅ .env 파일 생성 완료"

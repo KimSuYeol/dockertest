@@ -100,10 +100,10 @@ services:
       # Spring 프로파일 설정
       SPRING_PROFILES_ACTIVE: prod
       
-      # 🔥 JPA 설정 수정 - 첫 배포시 테이블 자동 생성
+      # 🔥 JPA 설정 수정 - Entity가 사용하는 실제 스키마
       SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
       SPRING_JPA_SHOW_SQL: false
-      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: seurasaeng-prod
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: seurasaeng_test
       
       # 로깅 설정
       LOGGING_LEVEL_ORG_HIBERNATE_SQL: warn
