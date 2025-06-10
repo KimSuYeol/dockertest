@@ -204,7 +204,7 @@ EOF
     log_info ".env 파일 생성 완료 (보안 적용)"
 }
 
-# 기존 컨테이너 정리
+# 기존 컨테이너
 cleanup_containers() {
     log_info "기존 컨테이너 정리 중..."
     
