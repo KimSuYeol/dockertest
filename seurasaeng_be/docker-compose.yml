@@ -23,8 +23,7 @@ services:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../database/postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ../logs/postgresql:/var/log/postgresql
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     networks:
@@ -41,12 +40,11 @@ services:
     image: redis:6.0-alpine
     container_name: seuraseung-redis
     restart: unless-stopped
-    command: redis-server --requirepass redis123!
+    command: redis-server --requirepass redis123! --maxmemory 256mb --maxmemory-policy allkeys-lru
     environment:
       REDIS_PASSWORD: redis123!
     volumes:
       - redis_data:/data
-      - ../logs/redis:/var/log/redis
     ports:
       - "6379:6379"
     networks:
@@ -90,8 +88,8 @@ services:
       # 암호화 키
       ENCRYPTION_KEY: MyShuttleQRKey16BytesSecure2024
       
-      # CORS 설정
-      CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221
+      # CORS 설정 (프론트엔드 서버: 13.125.200.221, 도메인: https://seurasaeng.site)
+      CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221,https://13.125.200.221
       
       # 메일 설정 (기본값, deploy.sh에서 .env로 덮어씀)
       MAIL_USERNAME: youjiyeon4@gmail.com
@@ -100,7 +98,7 @@ services:
       # Spring 프로파일 설정
       SPRING_PROFILES_ACTIVE: prod
       
-      # 🔥 JPA 설정 수정 - Entity가 사용하는 실제 스키마
+      # JPA 설정 - Entity가 사용하는 실제 스키마
       SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
       SPRING_JPA_SHOW_SQL: false
       SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: seurasaeng_test
@@ -108,6 +106,7 @@ services:
       # 로깅 설정
       LOGGING_LEVEL_ORG_HIBERNATE_SQL: warn
       LOGGING_LEVEL_ORG_HIBERNATE_TYPE_DESCRIPTOR_SQL_SPI: warn
+      LOGGING_LEVEL_APPLICATION: info
       
       # Thymeleaf 설정 (프로덕션)
       SPRING_THYMELEAF_CACHE: true
@@ -116,11 +115,17 @@ services:
       # Actuator 설정
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
+      
+      # 서버 설정
+      SERVER_PORT: 8080
+      
+      # 자바 옵션
+      JAVA_OPTS: "-Xmx512m -Xms256m -XX:+UseG1GC -Duser.timezone=Asia/Seoul"
+      
     env_file:
       - .env  # .env 파일이 있으면 환경변수 덮어쓰기
     volumes:
       - backend_logs:/app/logs
-      - ../logs/spring:/app/logs
     ports:
       - "8080:8080"
     networks:
@@ -136,30 +141,9 @@ services:
       timeout: 10s
       retries: 5
       start_period: 120s
-
-  # 데이터베이스 초기화
-  db-setup:
-    image: postgres:15.12
-    container_name: seuraseung-db-setup
-    networks:
-      - backend-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      POSTGRES_USER: seuraseung
-      POSTGRES_PASSWORD: seuraseung123!
-      REDIS_PASSWORD: redis123!
-    volumes:
-      - ../database/setup-db.sh:/setup-db.sh:ro
-    command: >
-      sh -c "
-        echo 'Waiting for services to be ready...' &&
-        sleep 30 &&
-        chmod +x /setup-db.sh &&
-        /setup-db.sh &&
-        echo 'Database setup completed'
-      "
-    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
