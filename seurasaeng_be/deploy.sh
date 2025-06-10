@@ -31,34 +31,9 @@ log_info "🚀 Backend 배포를 시작합니다..."
 log_info "현재 작업 디렉토리: $(pwd)"
 log_info "프로젝트 루트: $(realpath ..)"
 
-# Backend .env 파일 동적 생성 함수
+# Backend .env 파일 동적 생성 함수 (단순 버전)
 create_backend_env() {
     log_info "Backend 환경변수 파일을 생성합니다..."
-    
-    # 보안 설정 파일 로드 (민감한 정보용)
-    SECRETS_FILE="/etc/seurasaeng/backend-secrets.env"
-    if [ -f "$SECRETS_FILE" ]; then
-        log_info "보안 설정 파일을 로드합니다..."
-        source "$SECRETS_FILE"
-        log_success "✅ 보안 설정 파일 로드 완료"
-    else
-        log_warning "⚠️ 보안 설정 파일이 없습니다: $SECRETS_FILE"
-        log_info "기본값을 사용합니다. 프로덕션에서는 보안 파일을 생성하세요:"
-        log_info "sudo mkdir -p /etc/seurasaeng"
-        log_info "sudo cat > /etc/seurasaeng/backend-secrets.env << 'EOF'"
-        log_info "AWS_ACCESS_KEY=your_aws_access_key"
-        log_info "AWS_SECRET_KEY=your_aws_secret_key"
-        log_info "MAIL_USERNAME=your_email@gmail.com"
-        log_info "MAIL_PASSWORD=your_app_password"
-        log_info "EOF"
-        log_info "sudo chmod 600 /etc/seurasaeng/backend-secrets.env"
-        
-        # 기본값 사용 (보안상 실제 값은 별도 파일에서 로드)
-        AWS_ACCESS_KEY=${AWS_ACCESS_KEY:-""}
-        AWS_SECRET_KEY=${AWS_SECRET_KEY:-""}
-        MAIL_USERNAME=${MAIL_USERNAME:-"admin@seurasaeng.site"}
-        MAIL_PASSWORD=${MAIL_PASSWORD:-"placeholder_password"}
-    fi
     
     # .env 파일 생성 (현재 디렉토리에)
     cat > .env << EOF
@@ -73,9 +48,9 @@ REDIS_PORT=6379
 REDIS_DB=0
 REDIS_PASSWORD=redis123!
 
-# AWS S3 설정
-AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
-AWS_SECRET_KEY=${AWS_SECRET_KEY}
+# AWS S3 설정 (기본값)
+AWS_ACCESS_KEY=
+AWS_SECRET_KEY=
 AWS_REGION=ap-northeast-2
 AWS_BUCKET=profile-qrcode
 
@@ -86,9 +61,9 @@ JWT_KEY=seuraseung-jwt-secret-key-2024-production-environment-secure-key-minimum
 # CORS 설정
 CORS_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221
 
-# 메일 설정
-MAIL_USERNAME=${MAIL_USERNAME}
-MAIL_PASSWORD=${MAIL_PASSWORD}
+# 메일 설정 (기본값)
+MAIL_USERNAME=admin@seurasaeng.site
+MAIL_PASSWORD=placeholder_password
 EOF
 
     # 파일 권한 설정 (보안)
@@ -96,26 +71,13 @@ EOF
     
     log_success "✅ Backend .env 파일 생성 완료"
     
-    # 환경변수 요약 출력 (민감한 정보는 마스킹)
+    # 환경변수 요약 출력
     log_info "=== 📋 Backend 환경변수 설정 요약 ==="
     log_info "  DB_URL: jdbc:postgresql://postgres:5432/seuraseung"
     log_info "  DB_USERNAME: seuraseung"
-    log_info "  DB_PASSWORD: ********"
     log_info "  REDIS_HOST: redis"
-    log_info "  REDIS_PASSWORD: ********"
-    
-    if [[ -n "$AWS_ACCESS_KEY" && "$AWS_ACCESS_KEY" != "" ]]; then
-        log_info "  AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:0:8}***${AWS_ACCESS_KEY: -4}"
-    else
-        log_warning "  AWS_ACCESS_KEY: (비어있음 - S3 기능 제한됨)"
-    fi
-    
-    if [[ -n "$MAIL_USERNAME" && "$MAIL_USERNAME" != "admin@seurasaeng.site" ]]; then
-        log_info "  MAIL_USERNAME: $MAIL_USERNAME"
-    else
-        log_warning "  MAIL_USERNAME: (기본값 사용 - 메일 기능 제한됨)"
-    fi
-    
+    log_info "  AWS_ACCESS_KEY: (비어있음 - S3 기능 제한됨)"
+    log_info "  MAIL_USERNAME: admin@seurasaeng.site (기본값)"
     log_info "  JWT_KEY: ****...**** (256비트)"
     log_info "  CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221"
     echo
