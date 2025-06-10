@@ -208,7 +208,7 @@ EOF
 cleanup_containers() {
     log_info "기존 컨테이너 정리 중..."
     
-    # 기존 컨테이너 중지 및 제거
+    # 기존 컨테이너 
     docker-compose down -v --remove-orphans 2>/dev/null || true
     
     # 사용하지 않는 이미지 정리
