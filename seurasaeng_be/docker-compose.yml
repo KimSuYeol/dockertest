@@ -93,7 +93,7 @@ services:
       CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221,https://13.125.200.221,http://10.0.2.166:8080
       
       # 메일 설정 (.env에서 가져옴)
-      MAIL_USERNAME: "${MAIL_USERNAME:-seurasaeng.official@gmail.com}"
+      MAIL_USERNAME: "${MAIL_USERNAME}"
       MAIL_PASSWORD: "${MAIL_PASSWORD}"
       MAIL_ENABLED: true
       
