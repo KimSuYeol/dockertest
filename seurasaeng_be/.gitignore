@@ -73,3 +73,6 @@ data/
 # 📊 모니터링 파일들
 *.pid
 *.out
+# macOS 시스템 파일
+.DS_Store
+**/.DS_Store
