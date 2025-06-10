@@ -83,7 +83,7 @@ EOF
     echo
 }
 
-# 데이터베이스 초기화 함수
+# 데이터베이스 초기화 함수 (안전한 버전)
 setup_database() {
     log_info "데이터베이스 초기화를 확인합니다..."
     
@@ -91,9 +91,16 @@ setup_database() {
     if [ -f "../database/setup-db.sh" ]; then
         log_info "데이터베이스 초기화 스크립트를 실행합니다..."
         chmod +x ../database/setup-db.sh
-        bash ../database/setup-db.sh
+        if bash ../database/setup-db.sh; then
+            log_success "✅ 데이터베이스 초기화 성공"
+            return 0
+        else
+            log_warning "⚠️ 데이터베이스 초기화 스크립트 실행 실패"
+            return 1
+        fi
     else
-        log_warning "데이터베이스 초기화 스크립트가 없습니다: ../database/setup-db.sh"
+        log_warning "⚠️ 데이터베이스 초기화 스크립트가 없습니다: ../database/setup-db.sh"
+        return 1
     fi
 }
 
@@ -144,12 +151,46 @@ docker image prune -f
 # 로그 디렉토리 생성 (프로젝트 루트에)
 mkdir -p ../logs/spring
 
-# 데이터베이스 초기화
-setup_database
-
 # 새 컨테이너 시작
 log_info "새로운 컨테이너를 시작합니다..."
 docker-compose up -d
+
+# 컨테이너들이 준비될 때까지 대기
+log_info "컨테이너들이 완전히 시작될 때까지 대기합니다..."
+sleep 30
+
+# 데이터베이스 연결 대기 (더 안전한 방식)
+wait_for_database() {
+    local max_attempts=30
+    local attempt=1
+    
+    log_info "데이터베이스 서비스 준비 대기 중..."
+    
+    while [ $attempt -le $max_attempts ]; do
+        if docker exec seuraseung-postgres pg_isready -U seuraseung -d seuraseung >/dev/null 2>&1; then
+            log_success "✅ PostgreSQL이 준비되었습니다"
+            return 0
+        fi
+        
+        log_info "PostgreSQL 준비 대기 중... ($attempt/$max_attempts)"
+        sleep 5
+        ((attempt++))
+    done
+    
+    log_warning "⚠️ PostgreSQL 연결 대기 시간 초과. 계속 진행합니다."
+    return 1
+}
+
+# 데이터베이스 준비 대기
+wait_for_database
+
+# 데이터베이스 초기화 (선택사항 - 실패해도 계속 진행)
+log_info "데이터베이스 초기화를 시도합니다..."
+if setup_database; then
+    log_success "✅ 데이터베이스 초기화 완료"
+else
+    log_warning "⚠️ 데이터베이스 초기화 실패. 하지만 계속 진행합니다."
+fi
 
 # Backend 헬스체크
 backend_health_check() {
