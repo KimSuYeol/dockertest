@@ -23,6 +23,24 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
+# 로컬 .env 파일 확인
+check_local_env() {
+    if [ ! -f ".env.local" ]; then
+        log_error ".env.local 파일이 없습니다. 먼저 생성해주세요:"
+        echo ""
+        echo "cat > .env.local << EOF"
+        echo "AWS_ACCESS_KEY=YOUR_ACTUAL_ACCESS_KEY"
+        echo "AWS_SECRET_KEY=YOUR_ACTUAL_SECRET_KEY"
+        echo "MAIL_USERNAME=your@gmail.com"
+        echo "MAIL_PASSWORD=your_app_password"
+        echo "EOF"
+        echo ""
+        exit 1
+    fi
+    
+    log_info "로컬 환경변수 파일 확인 완료"
+}
+
 # Docker 및 Docker Compose 설치 확인
 check_docker() {
     if ! command -v docker &> /dev/null; then
@@ -81,16 +99,19 @@ EOF
     log_info "초기화 스크립트 생성 완료"
 }
 
-# .env 파일 생성 (더미 값으로 정상 작동)
+# .env 파일 생성 (보안 안전)
 create_env_file() {
     log_info ".env 파일 생성 중..."
+    
+    # 로컬 .env.local에서 실제 값 읽기
+    source .env.local
     
     cat > .env << EOF
 # ================================
 # Seurasaeng CI/CD 배포 설정
 # ================================
 # 생성일: $(date)
-# CI/CD 환경용 - 더미 값으로 정상 작동
+# 보안: AWS 크리덴셜은 로컬에서만 주입
 
 # ================================
 # 데이터베이스 설정
@@ -116,12 +137,12 @@ REDIS_POOL_MAX_IDLE=10
 REDIS_POOL_MIN_IDLE=2
 
 # ================================
-# AWS S3 설정 (더미 값 - 기능 비활성화)
+# AWS S3 설정 (로컬에서 주입)
 # ================================
-AWS_ACCESS_KEY=DUMMY_ACCESS_KEY
-AWS_SECRET_KEY=DUMMY_SECRET_KEY
+AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
+AWS_SECRET_KEY=${AWS_SECRET_KEY}
 AWS_REGION=ap-northeast-2
-AWS_BUCKET=dummy-bucket
+AWS_BUCKET=qrcode-s3-bucket
 
 # ================================
 # 보안 및 암호화 설정
@@ -137,10 +158,10 @@ CORS_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221,https://13.12
 WEBSOCKET_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221,https://13.125.200.221
 
 # ================================
-# 메일 설정 (더미 값 - 기능 비활성화)
+# 메일 설정 (로컬에서 주입)
 # ================================
-MAIL_USERNAME=dummy@example.com
-MAIL_PASSWORD=dummy_password
+MAIL_USERNAME=${MAIL_USERNAME}
+MAIL_PASSWORD=${MAIL_PASSWORD}
 MAIL_DEBUG=false
 
 # ================================
@@ -180,7 +201,7 @@ MAX_REQUEST_SIZE=10MB
 JAVA_OPTS=-Xmx1g -Xms512m -XX:+UseG1GC -Duser.timezone=Asia/Seoul -Dspring.profiles.active=prod
 EOF
 
-    log_info ".env 파일 생성 완료"
+    log_info ".env 파일 생성 완료 (보안 적용)"
 }
 
 # 기존 컨테이너 정리
@@ -274,12 +295,8 @@ show_status() {
     echo "  - ✅ 데이터베이스: 정상 연결"
     echo "  - ✅ Redis: 정상 연결"
     echo "  - ✅ Backend: 정상 시작"
-    echo "  - ⚠️  AWS S3: 더미 설정 (기능 비활성화)"
-    echo "  - ⚠️  메일: 더미 설정 (기능 비활성화)"
-    echo ""
-    echo "🔧 실제 운영 시 필요한 설정:"
-    echo "  1. AWS_ACCESS_KEY / AWS_SECRET_KEY"
-    echo "  2. MAIL_USERNAME / MAIL_PASSWORD (Gmail 앱 패스워드)"
+    echo "  - ✅ AWS S3: 실제 키 적용"
+    echo "  - ✅ 메일: 실제 설정 적용"
     echo ""
     echo "📊 컨테이너 상태:"
     docker-compose ps
@@ -290,6 +307,7 @@ show_status() {
 
 # 메인 실행 함수
 main() {
+    check_local_env
     check_docker
     create_directories
     create_init_scripts

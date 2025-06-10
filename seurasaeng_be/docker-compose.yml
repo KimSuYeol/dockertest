@@ -56,7 +56,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # Spring Boot 백엔드 (CI/CD 최적화)
+  # Spring Boot 백엔드
   backend:
     build:
       context: .
@@ -79,12 +79,12 @@ services:
       # JWT 키
       JWT_KEY: SeuraseungJWTSecretKey2024ProductionEnvironmentSecureKey256BitsMinimumForSecurity!@#
       
-      # AWS S3 설정 (더미 값 - 기능 비활성화)
-      AWS_ACCESS_KEY: "DUMMY_ACCESS_KEY"
-      AWS_SECRET_KEY: "DUMMY_SECRET_KEY"
+      # AWS S3 설정 (qrcode-s3-bucket - .env에서 실제 키 가져옴)
+      AWS_ACCESS_KEY: "${AWS_ACCESS_KEY}"
+      AWS_SECRET_KEY: "${AWS_SECRET_KEY}"
       AWS_REGION: ap-northeast-2
-      AWS_BUCKET: dummy-bucket
-      AWS_S3_ENABLED: false
+      AWS_BUCKET: qrcode-s3-bucket
+      AWS_S3_ENABLED: true
       
       # 암호화 키
       ENCRYPTION_KEY: SeuraseungSecure2024ProKey16
@@ -92,15 +92,15 @@ services:
       # CORS 설정 (실제 서버 정보)
       CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221,https://13.125.200.221,http://10.0.2.166:8080
       
-      # 메일 설정 (더미 값 - 기능 비활성화)
-      MAIL_USERNAME: dummy@example.com
-      MAIL_PASSWORD: "dummy_password"
-      MAIL_ENABLED: false
+      # 메일 설정 (.env에서 가져옴)
+      MAIL_USERNAME: "${MAIL_USERNAME:-seurasaeng.official@gmail.com}"
+      MAIL_PASSWORD: "${MAIL_PASSWORD}"
+      MAIL_ENABLED: true
       
       # Spring 프로파일 설정
       SPRING_PROFILES_ACTIVE: prod
       
-      # JPA 설정 (CI/CD 최적화)
+      # JPA 설정
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: false
       SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: seurasaeng_test
@@ -114,20 +114,20 @@ services:
       SPRING_THYMELEAF_CACHE: true
       SPRING_DEVTOOLS_RESTART_ENABLED: false
       
-      # Actuator 설정 (CI/CD 환경)
+      # Actuator 설정
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
       
       # 서버 설정
       SERVER_PORT: 8080
       
-      # 기능 플래그 (더미 환경)
-      FEATURES_AWS_S3_ENABLED: false
-      FEATURES_EMAIL_ENABLED: false
+      # 기능 플래그 (S3 및 메일 활성화)
+      FEATURES_AWS_S3_ENABLED: true
+      FEATURES_EMAIL_ENABLED: true
       FEATURES_FILE_UPLOAD_ENABLED: true
       FEATURES_QR_GENERATION_ENABLED: true
       
-      # 자바 옵션 (CI/CD 최적화)
+      # 자바 옵션
       JAVA_OPTS: "-Xmx1g -Xms512m -XX:+UseG1GC -Duser.timezone=Asia/Seoul -Dspring.profiles.active=prod"
       
     env_file:
