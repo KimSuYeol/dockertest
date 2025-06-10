@@ -83,7 +83,7 @@ jobs:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "seurasaeng_be-image.tar.gz,seurasaeng_be/deploy.sh,seurasaeng_be/docker-compose.yml,database/"
+        source: "seurasaeng_be-image.tar.gz,seurasaeng_be/,database/"
         target: "/home/ubuntu/"
         timeout: 600s
         
@@ -110,7 +110,7 @@ jobs:
           
           # Back Server에서 배포 실행 (susumon.pem 사용)
           echo "🎯 Executing deployment on back server using susumon.pem..."
-          ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'chmod +x /home/ubuntu/seurasaeng_be/deploy.sh && bash /home/ubuntu/seurasaeng_be/deploy.sh'
+          ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'cd /home/ubuntu/seurasaeng_be && chmod +x deploy.sh && bash deploy.sh'
           
           echo "✅ Backend deployment completed"
 
@@ -162,7 +162,7 @@ jobs:
             if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
               echo "❌ Backend health check failed"
               echo "📋 Container status:"
-              ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'cd seurasaeng_be && docker-compose ps'
+              ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'cd /home/ubuntu/seurasaeng_be && docker-compose ps'
               echo "📋 Backend logs:"
               ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'docker logs seuraseung-backend --tail=20'
               echo "📋 Database logs:"
