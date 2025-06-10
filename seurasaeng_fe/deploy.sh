@@ -348,7 +348,7 @@ fi
 
 # 백엔드 연결 테스트 (선택사항)
 log_info "백엔드 서버 연결을 테스트합니다..."
-BACKEND_IP="10.0.2.165"
+BACKEND_IP="10.0.2.166"
 BACKEND_PORT="8080"
 
 if curl -f -s --connect-timeout 10 --max-time 30 http://${BACKEND_IP}:${BACKEND_PORT}/api/actuator/health >/dev/null 2>&1; then

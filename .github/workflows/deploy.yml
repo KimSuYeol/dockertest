@@ -80,7 +80,7 @@ jobs:
         host: ${{ secrets.FRONT_SERVER_HOST }}
         username: ubuntu
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/deploy.sh,seurasaeng_fe/docker-compose.yml,seurasaeng_fe/nginx/"
+        source: "seurasaeng_fe-image.tar.gz,seurasaeng_fe/"
         target: "/home/ubuntu/"
         timeout: 300s
         
@@ -97,8 +97,9 @@ jobs:
           echo "🚀 Starting HTTPS frontend deployment..."
           
           # 배포 스크립트 실행 권한 부여 및 실행
-          chmod +x /home/ubuntu/seurasaeng_fe/deploy.sh
-          bash /home/ubuntu/seurasaeng_fe/deploy.sh
+          cd /home/ubuntu/seurasaeng_fe
+          chmod +x deploy.sh
+          bash deploy.sh
           
           echo "✅ HTTPS Frontend deployment script completed"
 
@@ -129,7 +130,7 @@ jobs:
             if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
               echo "❌ HTTP Frontend health check failed after ${MAX_ATTEMPTS} attempts"
               echo "📋 Container status:"
-              cd seurasaeng_fe && docker-compose ps
+              cd /home/ubuntu/seurasaeng_fe && docker-compose ps
               echo "📋 Frontend logs:"
               docker logs seuraseung-frontend --tail=50
               exit 1
@@ -186,7 +187,7 @@ jobs:
           
           # 백엔드 연결 테스트 (실패해도 배포는 성공)
           echo "🔍 Testing backend connectivity..."
-          if curl -f -s http://10.0.2.165:8080/api/actuator/health > /dev/null; then
+          if curl -f -s http://10.0.2.166:8080/actuator/health > /dev/null; then
             echo "✅ Backend connectivity verified"
             
             # HTTPS API 프록시 테스트
@@ -246,25 +247,3 @@ jobs:
         echo "  4. SSL certificate issues"
         echo "  5. Domain DNS settings"
         echo "  6. Frontend build issues"
-
-# SSL 인증서 갱신 작업 (별도 스케줄)
-  ssl-renewal:
-    name: SSL Certificate Renewal Check
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    
-    steps:
-    - name: Renew SSL Certificates
-      uses: appleboy/ssh-action@v1.0.0
-      with:
-        host: ${{ secrets.FRONT_SERVER_HOST }}
-        username: ubuntu
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          echo "🔄 Checking SSL certificate renewal..."
-          if [ -f "/home/ubuntu/renew-ssl.sh" ]; then
-            /home/ubuntu/renew-ssl.sh
-            echo "✅ SSL renewal check completed"
-          else
-            echo "⚠️ SSL renewal script not found"
-          fi
