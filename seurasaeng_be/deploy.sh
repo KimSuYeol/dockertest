@@ -20,6 +20,8 @@ JWT_KEY=seuraseung-jwt-secret-key-2024-production-environment-secure-key-minimum
 CORS_ALLOWED_ORIGINS=https://seurasaeng.site,http://13.125.200.221
 MAIL_USERNAME=admin@seurasaeng.site
 MAIL_PASSWORD=placeholder_password
+SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
+SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=seurasaeng-prod
 EOF
 
 echo "✅ .env 파일 생성 완료"
