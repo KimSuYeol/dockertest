@@ -7,8 +7,6 @@ volumes:
     driver: local
   redis_data:
     driver: local
-  backend_logs:
-    driver: local
 
 services:
   # PostgreSQL 데이터베이스
@@ -17,10 +15,10 @@ services:
     container_name: seuraseung-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: seuraseung
-      POSTGRES_USER: seuraseung
-      POSTGRES_PASSWORD: SeuraseungProd2024!@#
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d:ro
@@ -29,20 +27,17 @@ services:
     networks:
       - backend-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U seuraseung -d seuraseung"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 30s
 
   # Redis 캐시
   redis:
     image: redis:6.0-alpine
     container_name: seuraseung-redis
     restart: unless-stopped
-    command: redis-server --requirepass SeuraseungRedis2024!@# --maxmemory 512mb --maxmemory-policy allkeys-lru
-    environment:
-      REDIS_PASSWORD: SeuraseungRedis2024!@#
+    command: redis-server --databases 2
     volumes:
       - redis_data:/data
     ports:
@@ -50,11 +45,10 @@ services:
     networks:
       - backend-network
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "SeuraseungRedis2024!@#", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
 
   # Spring Boot 백엔드
   backend:
@@ -64,76 +58,8 @@ services:
     image: seuraseung-backend:latest
     container_name: seuraseung-backend
     restart: unless-stopped
-    environment:
-      # 데이터베이스 환경변수
-      DB_URL: jdbc:postgresql://postgres:5432/seuraseung
-      DB_USERNAME: seuraseung
-      DB_PASSWORD: SeuraseungProd2024!@#
-      
-      # Redis 환경변수
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      REDIS_PASSWORD: SeuraseungRedis2024!@#
-      
-      # JWT 키
-      JWT_KEY: SeuraseungJWTSecretKey2024ProductionEnvironmentSecureKey256BitsMinimumForSecurity!@#
-      
-      # AWS S3 설정 (qrcode-s3-bucket - .env에서 실제 키 가져옴)
-      AWS_ACCESS_KEY: "${AWS_ACCESS_KEY}"
-      AWS_SECRET_KEY: "${AWS_SECRET_KEY}"
-      AWS_REGION: ap-northeast-2
-      AWS_BUCKET: qrcode-s3-bucket
-      AWS_S3_ENABLED: true
-      
-      # 암호화 키
-      ENCRYPTION_KEY: SeuraseungSecure2024ProKey16
-      
-      # CORS 설정 (실제 서버 정보)
-      CORS_ALLOWED_ORIGINS: https://seurasaeng.site,http://13.125.200.221,https://13.125.200.221,http://10.0.2.166:8080
-      
-      # 메일 설정 (.env에서 가져옴)
-      MAIL_USERNAME: "${MAIL_USERNAME}"
-      MAIL_PASSWORD: "${MAIL_PASSWORD}"
-      MAIL_ENABLED: true
-      
-      # Spring 프로파일 설정
-      SPRING_PROFILES_ACTIVE: prod
-      
-      # JPA 설정
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: false
-      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: seurasaeng_test
-      
-      # 로깅 설정
-      LOGGING_LEVEL_ORG_HIBERNATE_SQL: warn
-      LOGGING_LEVEL_ORG_HIBERNATE_TYPE_DESCRIPTOR_SQL_SPI: warn
-      LOGGING_LEVEL_APPLICATION: info
-      
-      # Thymeleaf 설정
-      SPRING_THYMELEAF_CACHE: true
-      SPRING_DEVTOOLS_RESTART_ENABLED: false
-      
-      # Actuator 설정
-      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics
-      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: when-authorized
-      
-      # 서버 설정
-      SERVER_PORT: 8080
-      
-      # 기능 플래그 (S3 및 메일 활성화)
-      FEATURES_AWS_S3_ENABLED: true
-      FEATURES_EMAIL_ENABLED: true
-      FEATURES_FILE_UPLOAD_ENABLED: true
-      FEATURES_QR_GENERATION_ENABLED: true
-      
-      # 자바 옵션
-      JAVA_OPTS: "-Xmx1g -Xms512m -XX:+UseG1GC -Duser.timezone=Asia/Seoul -Dspring.profiles.active=prod"
-      
     env_file:
-      - .env  # .env 파일이 있으면 환경변수 가져오기
-    volumes:
-      - backend_logs:/app/logs
+      - .env
     ports:
       - "8080:8080"
     networks:
@@ -148,10 +74,4 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 120s
-    deploy:
-      resources:
-        limits:
-          memory: 1.5G
-        reservations:
-          memory: 1G
+      start_period: 60s

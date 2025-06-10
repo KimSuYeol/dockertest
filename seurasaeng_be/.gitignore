@@ -1,78 +1,73 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-# 🔒 보안 파일들 (절대 Git에 올리면 안됨)
+# ================================
+# 환경변수 파일 (GitHub에 올리지 않음!)
+# ================================
 .env
-.env.*
-!.env.example
-!.env.template
+.env.local
+.env.production
+.env.development
+*.env
 
-# 🗂️ 로그 및 임시 파일
-logs/
-*.log
-*.tmp
-*.temp
-
-# 🐳 Docker 관련
-.dockerignore
-docker-compose.override.yml
-
-# 📦 빌드 결과물
+# ================================
+# Java/Maven
+# ================================
 target/
 *.jar
 *.war
 *.ear
+.mvn/wrapper/maven-wrapper.jar
+mvnw
+mvnw.cmd
 
-# 🔑 인증 파일들
+# ================================
+# IDE
+# ================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+
+# ================================
+# OS
+# ================================
+.DS_Store
+Thumbs.db
+
+# ================================
+# Docker
+# ================================
+*.tar.gz
+docker-compose.override.yml
+
+# ================================
+# 로그 파일
+# ================================
+*.log
+logs/
+
+# ================================
+# Node.js (프론트엔드용)
+# ================================
+node_modules/
+build/
+dist/
+.pnp
+.pnp.js
+coverage/
+
+# ================================
+# 임시 파일
+# ================================
+*.tmp
+*.temp
+*~
+*.bak
+*.backup
+
+# ================================
+# AWS/보안 관련 파일
+# ================================
 *.pem
 *.key
 *.crt
-*.p12
-*.jks
-
-# 💾 백업 파일들
-*.backup
-*.bak
-*.old
-
-# 🗂️ 운영 관련 파일들
-init-scripts/
-data/
-
-# 📊 모니터링 파일들
-*.pid
-*.out
-# macOS 시스템 파일
-.DS_Store
-**/.DS_Store
+aws-credentials.txt
