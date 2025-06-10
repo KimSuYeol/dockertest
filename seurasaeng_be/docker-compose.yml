@@ -131,7 +131,7 @@ services:
       JAVA_OPTS: "-Xmx1g -Xms512m -XX:+UseG1GC -Duser.timezone=Asia/Seoul -Dspring.profiles.active=prod"
       
     env_file:
-      - .env  # .env 파일이 있으면 환경변수 덮어쓰기
+      - .env  # .env 파일이 있으면 환경변수 가져오기
     volumes:
       - backend_logs:/app/logs
     ports:
