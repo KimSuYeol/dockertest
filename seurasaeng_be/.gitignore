@@ -32,4 +32,44 @@ build/
 ### VS Code ###
 .vscode/
 
+# 🔒 보안 파일들 (절대 Git에 올리면 안됨)
 .env
+.env.*
+!.env.example
+!.env.template
+
+# 🗂️ 로그 및 임시 파일
+logs/
+*.log
+*.tmp
+*.temp
+
+# 🐳 Docker 관련
+.dockerignore
+docker-compose.override.yml
+
+# 📦 빌드 결과물
+target/
+*.jar
+*.war
+*.ear
+
+# 🔑 인증 파일들
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# 💾 백업 파일들
+*.backup
+*.bak
+*.old
+
+# 🗂️ 운영 관련 파일들
+init-scripts/
+data/
+
+# 📊 모니터링 파일들
+*.pid
+*.out

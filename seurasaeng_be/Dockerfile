@@ -3,22 +3,17 @@ FROM maven:3.9.4-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
-# pom.xml과 Maven wrapper 복사 (의존성 캐싱 최적화)
+# pom.xml 먼저 복사 (의존성 캐싱 최적화)
 COPY pom.xml ./
-COPY .mvn .mvn
-COPY mvnw ./
-
-# Maven wrapper 실행 권한 부여
-RUN chmod +x ./mvnw
 
 # 의존성 다운로드 (캐시 최적화)
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # 소스 코드 복사
 COPY src ./src
 
 # Spring Boot 애플리케이션 빌드
-RUN ./mvnw clean package -DskipTests -B
+RUN mvn clean package -DskipTests -B
 
 # 빌드 결과 확인
 RUN ls -la target/
@@ -42,14 +37,8 @@ RUN addgroup -g 1001 -S spring && \
 # 애플리케이션 디렉토리 생성
 WORKDIR /app
 
-# 방법 1: 와일드카드 사용 (현재 사용 중 - 권장)
+# 빌드된 JAR 파일 복사 (와일드카드 사용으로 파일명에 관계없이 복사)
 COPY --from=builder /app/target/*.jar app.jar
-
-# 방법 2: 메인 JAR만 정확히 복사 (더 안전한 대안)
-# COPY --from=builder /app/target/*-SNAPSHOT.jar app.jar
-
-# 방법 3: 실행 가능한 JAR만 복사 (가장 정확)
-# RUN find /app/target -name "*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" -exec cp {} app.jar \;
 
 # 로그 디렉토리 생성 및 권한 설정
 RUN mkdir -p /app/logs /app/temp && \
