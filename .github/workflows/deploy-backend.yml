@@ -123,7 +123,7 @@ jobs:
         script: |
           echo "🔍 백엔드 상태 확인..."
           
-          sleep 30
+          sleep 120
           
           if ssh -i ~/.ssh/susumon.pem -o StrictHostKeyChecking=no ubuntu@10.0.2.166 'curl -f -s http://localhost:8080/actuator/health' > /dev/null; then
             echo "✅ Backend 정상 작동!"
