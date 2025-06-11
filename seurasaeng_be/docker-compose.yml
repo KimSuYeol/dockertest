@@ -9,7 +9,7 @@ volumes:
     driver: local
 
 services:
-  # PostgreSQL 데이터베이스
+  # PostgreSQL 데이터베이스 eoe
   postgres:
     image: postgres:15.12
     container_name: seuraseung-postgres
