@@ -22,13 +22,13 @@ log_error() {
     echo -e "${RED}❌ $1${NC}"
 }
 
-# .env 파일 확인 (GitHub Actions에서 생성해서 전송됨)
+# .env 파일 확인
 if [ ! -f ".env" ]; then
-    log_error ".env 파일이 없습니다. GitHub Actions에서 생성되어야 합니다."
+    log_error ".env 파일이 없습니다."
     exit 1
 fi
 
-log_info ".env 파일 확인 완료 (GitHub Actions에서 생성됨)"
+log_info ".env 파일 확인 완료"
 
 # 필요한 디렉토리 생성
 mkdir -p init-scripts
@@ -36,7 +36,7 @@ mkdir -p logs
 
 # PostgreSQL 초기화 스크립트 생성
 cat > init-scripts/01-init.sql << 'EOF'
--- PostgreSQL 초기화 스크립트 (팀원 요청 기반)
+-- PostgreSQL 초기화 스크립트
 \echo 'Creating schemas seurasaeng_test and seurasaeng_prod...'
 
 -- 스키마 생성
@@ -57,7 +57,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA seurasaeng_prod GRANT ALL PRIVILEGES ON TABLE
 ALTER DEFAULT PRIVILEGES IN SCHEMA seurasaeng_test GRANT ALL PRIVILEGES ON SEQUENCES TO postgres;
 ALTER DEFAULT PRIVILEGES IN SCHEMA seurasaeng_prod GRANT ALL PRIVILEGES ON SEQUENCES TO postgres;
 
--- 기본 스키마 설정 (test를 기본으로)
+-- 기본 스키마 설정
 ALTER USER postgres SET search_path TO seurasaeng_test,seurasaeng_prod,public;
 
 -- 필요한 확장 설치
@@ -73,7 +73,7 @@ log_info "기존 컨테이너 정리 중..."
 docker-compose down -v --remove-orphans 2>/dev/null || true
 docker system prune -f
 
-# Docker 이미지 로드 (있는 경우)
+# Docker 이미지 로드
 if [ -f "../seurasaeng_be-image.tar.gz" ]; then
     log_info "Docker 이미지 로드 중..."
     docker load < ../seurasaeng_be-image.tar.gz
@@ -109,9 +109,9 @@ for i in {1..15}; do
     sleep 2
 done
 
-# Backend 대기
+# Backend 대기 (더 긴 시간)
 echo "Backend 준비 대기 중..."
-for i in {1..60}; do
+for i in {1..80}; do
     if curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
         log_info "Backend 준비 완료"
         break
@@ -119,6 +119,13 @@ for i in {1..60}; do
     echo -n "."
     sleep 3
 done
+
+# Backend가 시작되지 않은 경우 로그 출력
+if ! curl -f http://localhost:8080/actuator/health > /dev/null 2>&1; then
+    log_error "Backend 시작 실패. 로그를 확인합니다..."
+    echo "Backend 로그:"
+    docker-compose logs --tail=50 backend
+fi
 
 # 최종 상태 표시
 echo ""
